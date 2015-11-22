@@ -1,0 +1,73 @@
+__author__ = 'Florian'
+
+#################
+# CONFIGURATION #
+#################
+
+import os, sys
+if sys.platform == 'darwin':
+    # Display on Laptop Screen on the left
+    os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (-400,100)
+    from datastream import MockBaseDataStream
+    datastream = MockBaseDataStream()
+elif sys.platform == 'linux2':
+
+    from evdev import InputDevice, list_devices
+
+    devices = map(InputDevice, list_devices())
+    eventX=""
+    for dev in devices:
+        if dev.name == "ADS7846 Touchscreen":
+            eventX = dev.fn
+    os.environ["SDL_FBDEV"] = "/dev/fb1"
+    os.environ["SDL_MOUSEDRV"] = "TSLIB"
+    os.environ["SDL_MOUSEDEV"] = eventX
+
+#
+# CHANGE FROM HERE
+#
+
+UDP_PORT = 18877
+BUF_SIZE = 4096
+
+#
+SCREEN_WIDTH = 320
+SCREEN_HEIGHT = 240
+SCREEN_DEEP = 32
+
+#
+LABEL_RIGHT = 0
+LABEL_LEFT = 1
+
+ALIGN_CENTER = 0
+ALIGN_RIGHT = 1
+ALIGN_LEFT = 2
+VALIGN_CENTER = 0
+VALIGN_TOP = 1
+VALIGN_BOTTOM = 2
+
+
+
+#
+# Stop changing. Of course - you can do, but it should not be necessary
+#
+FONT = 'assets/DroidSansMono.ttf'
+# set up the colors
+BLACK =  (  0,   0,   0)
+WHITE =  (255, 255, 255)
+RED   =  (255,   0,   0)
+GREEN =  (  0, 255,   0)
+BLUE  =  (  0,   0, 255)
+CYAN  =  (  0, 255, 255)
+MAGENTA= (255,   0, 255)
+YELLOW = (255, 255,   0)
+GREY   = (214, 214, 214)
+
+BACKGROUND_COLOR = BLACK
+FOREGROUND_COLOR = WHITE
+
+TIMEOUT_IN_SECONDS = 0.5
+#
+#
+#
+

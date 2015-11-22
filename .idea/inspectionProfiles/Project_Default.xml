@@ -1,0 +1,22 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <option name="myLocal" value="true" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <value>
+          <list size="8">
+            <item index="0" class="java.lang.String" itemvalue="websocket-client" />
+            <item index="1" class="java.lang.String" itemvalue="requests" />
+            <item index="2" class="java.lang.String" itemvalue="docker-py" />
+            <item index="3" class="java.lang.String" itemvalue="PyYAML" />
+            <item index="4" class="java.lang.String" itemvalue="texttable" />
+            <item index="5" class="java.lang.String" itemvalue="dockerpty" />
+            <item index="6" class="java.lang.String" itemvalue="docopt" />
+            <item index="7" class="java.lang.String" itemvalue="six" />
+          </list>
+        </value>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>
