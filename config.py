@@ -72,5 +72,5 @@ elif sys.platform == 'linux2':
     os.environ["SDL_MOUSEDRV"] = "TSLIB"
     os.environ["SDL_MOUSEDEV"] = eventX
     from datastream import PDU1800DataStream
-    datastream = PDU1800DataStream(port=UDP_PORT)
+    datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
 #
