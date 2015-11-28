@@ -61,6 +61,7 @@ BLUE  =  (  0,   0, 255)
 CYAN  =  (  0, 255, 255)
 MAGENTA= (255,   0, 255)
 YELLOW = (255, 255,   0)
+RPM_YELLOW = (230, 230,   40)
 GREY   = (214, 214, 214)
 
 BACKGROUND_COLOR = BLACK

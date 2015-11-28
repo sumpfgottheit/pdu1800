@@ -10,8 +10,8 @@ SimDataPacket = namedtuple('SimDataPacketBase', ['version', GEAR, RPM, SPEED, MA
 
 class SimulatedCar(object):
     VERSION=1
-    MAX_RPM=12000
-    MIN_RPM=2400
+    MAX_RPM=11000
+    MIN_RPM=1700
     MAX_GEAR=6
     MIN_GEAR=0
     MAX_THROTTLE_RPMS_DELTA=100

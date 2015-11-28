@@ -15,7 +15,7 @@ def clear_dirty_rects():
     del dirty_rects[:]
 
 class Widget(object):
-    def __init__(self, surface, x, y, w, h, fill_background=False, draw_borders=False):
+    def __init__(self, surface, x, y, w, h, fill_background=False, draw_borders=True):
         self.surface = surface
         self.x = x
         self.y = y
@@ -49,17 +49,16 @@ class Widget(object):
         dirty_rects.append(self.rect)
 
 class TextWidget(Widget):
-    def __init__(self, surface, x, y, w, h):
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER):
         super(TextWidget, self).__init__(surface, x, y, w, h)
         self.value = ""
-        self.computed_fontsize = self.find_font_size()
-        self._fontsize = self.computed_fontsize
+        self._fontsize = fontsize if fontsize else self.find_font_size()
         self.font = Font(FONT, self._fontsize)
         self.background_color = BACKGROUND_COLOR
         self.font_color = FOREGROUND_COLOR
         self.fill_background = True
-        self.align = ALIGN_CENTER
-        self.valign = VALIGN_CENTER
+        self.align = align
+        self.valign = valign
         self.listen = None
 
     @property
@@ -111,13 +110,13 @@ class TextWidget(Widget):
         return size
 
 class LabelWidget(TextWidget):
-    def __init__(self, surface, x, y, w, h, value):
-        super(LabelWidget, self).__init__(surface, x, y, w, h)
+    def __init__(self, surface, x, y, w, h, value, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER):
+        super(LabelWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign)
         self.value = value
 
 class GearNumberWidget(TextWidget):
-    def __init__(self, surface, x, y, w, h):
-        super(GearNumberWidget, self).__init__(surface, x, y, w, h)
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER):
+        super(GearNumberWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign)
         self.listen = GEAR
 
     def update(self, value):
@@ -135,13 +134,13 @@ class GearNumberWidget(TextWidget):
 
 
 class RPMWidget(TextWidget):
-    def __init__(self, surface, x, y, w, h):
-        super(RPMWidget, self).__init__(surface, x, y, w, h)
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER):
+        super(RPMWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign)
         self.listen = RPM
 
 class SpeedWidget(TextWidget):
-    def __init__(self, surface, x, y, w, h):
-        super(SpeedWidget, self).__init__(surface, x, y, w, h)
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER):
+        super(SpeedWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign)
         self.listen = SPEED
 
     def update(self, value):
@@ -155,8 +154,8 @@ class SpeedWidget(TextWidget):
         return False
 
 class RPMPercentWidget(TextWidget):
-    def __init__(self, surface, x, y, w, h):
-        super(RPMPercentWidget, self).__init__(surface, x, y, w, h)
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER):
+        super(RPMPercentWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign)
         self.listen = RPM
         self.value = 0
 
@@ -169,52 +168,67 @@ class RPMPercentWidget(TextWidget):
             return True
         return False
 
+class RPMBarTile(Widget):
+    def __init__(self, surface, x, y, w, h, color):
+        super(RPMBarTile, self).__init__(surface, x, y, w, h)
+        self.draw_borders = False
+        self.fill_background = False
+        self.color = color
+        self.is_shown = False
+
+    def show(self):
+        if not self.is_shown:
+            self.is_shown = True
+            self.draw_borders = True
+            self.fill_background = True
+            self.background_color = self.color
+            self.add_to_dirty_rects()
+            self.draw()
+
+    def hide(self):
+        if self.is_shown:
+            self.is_shown = False
+            self.draw_borders = True
+            self.fill_background = True
+            self.background_color = BACKGROUND_COLOR
+            self.add_to_dirty_rects()
+            self.draw()
+
+
 class RPMBarWidget(Widget):
+    NUM_TILES = 20
+
     def __init__(self, surface, x, y, w, h):
         super(RPMBarWidget, self).__init__(surface, x, y, w, h)
         self.listen = True
         self.percent = 0
+        self.tiles = [RPMBarTile(surface, x=(SCREEN_WIDTH / self.NUM_TILES) * i + 1, y=self.y, w=(SCREEN_WIDTH/self.NUM_TILES+1), h=self.h, color=self.get_color(i)) for i in range(self.NUM_TILES)]
+        self.tiles_shown = [False] * self.NUM_TILES
+        self.num_tiles_shown = -1
+
+    def get_color(self, i):
+        if i <= self.NUM_TILES-9:
+            return GREEN
+        elif i <= self.NUM_TILES-5:
+            return RPM_YELLOW
+        else:
+            return RED
 
     def update(self, value):
         max_rpm = value.max_rpm
         rpm = value.rpm
         percent = round(float(rpm) / max_rpm, 2)
-        if percent != self.percent:
-            self.percent = percent
-            self.add_to_dirty_rects()
-            self.draw()
+        num_tiles_shown = int(percent * self.NUM_TILES)
+        if num_tiles_shown != self.num_tiles_shown:
+            for i in range(self.NUM_TILES):
+                self.tiles[i].show()
+                if i < num_tiles_shown:
+                    self.tiles[i].show()
+                else:
+                    self.tiles[i].hide()
+            self.num_tiles_shown = num_tiles_shown
             return True
         return False
-
-    def draw(self):
-        filled_width = int(self.w * self.percent)
-        rect_filled = Rect(self.x, self.y, filled_width, self.h)
-        rect_empty = Rect(filled_width, self.y, self.w - filled_width,  self.h)
-        pygame.draw.rect(self.surface, self.barcolor, rect_filled, 0)
-        pygame.draw.rect(self.surface, BACKGROUND_COLOR, rect_empty, 0)
-
-    @property
-    def barcolor(self):
-        #GREEN =  (  0, 255,   0)
-        #YELLOW = (255, 255,   0)
-        #RED   =  (255,   0,   0)
-        PERCENT_GREEN = 0.45
-        PERCENT_YELLOW_LOW=0.6
-        PERCENT_YELLOW_HIGH=0.75
-        PERCENT_RED=0.95
-
-        if self.percent < PERCENT_GREEN:
-            return GREEN
-        elif self.percent < PERCENT_YELLOW_LOW:
-            d = 1 - (PERCENT_YELLOW_LOW - self.percent) / (PERCENT_YELLOW_LOW - PERCENT_GREEN)
-            return (int(round(255 * d)), 255, 0)
-        elif self.percent < PERCENT_YELLOW_HIGH:
-            return YELLOW
-        elif self.percent < PERCENT_RED:
-            d = (PERCENT_RED - self.percent) / (PERCENT_RED - PERCENT_YELLOW_HIGH)
-            return (255 , int(round(255 * d)), 0)
-        else:
-            return RED
 
 
 def fill_background(surface):
@@ -257,41 +271,24 @@ def create_page_0(surface):
     page = Page('Base', surface)
 
     # RPM BAR Widget
-    bar = RPMBarWidget(surface, 0, 0, SCREEN_WIDTH ,39)
+    bar = RPMBarWidget(surface, 0, 0, SCREEN_WIDTH ,20)
     page.add(bar)
 
-    # Speed Widget
-    speed = SpeedWidget(surface, 5, 40, 90, 60)
-    speed.align = ALIGN_LEFT
-    page.add(speed)
-    ls = LabelWidget(surface, speed.x, speed.yy, speed.w, 30, "km/h")
-    ls.fontsize = 16
-    ls.valign = VALIGN_TOP
-    page.add(ls)
-
     # Gear Number
-    gear  = GearNumberWidget(surface, speed.xx, 40, 90, 150)
-    gear.fontsize = 150
+    gear  = GearNumberWidget(surface, x=SCREEN_WIDTH/2-40, y=40, w=80, h=120, fontsize=130)
     page.add(gear)
-    lg = LabelWidget(surface, gear.x, gear.yy, gear.w, 30, "Gear")
-    lg.fontsize = 16
-    lg.valign = VALIGN_TOP
+    lg = LabelWidget(surface, x=gear.x, y=gear.yy, w=gear.w, h=30, value="Gear", fontsize=16)
     page.add(lg)
 
-    rpms = RPMWidget(surface, gear.yy, 40, SCREEN_WIDTH-gear.yy, speed.h)
-    rpms.align = ALIGN_RIGHT
-    page.add(rpms)
-    ls = LabelWidget(surface, rpms.x, rpms.yy, rpms.w, 30, "rpms")
-    ls.fontsize = 16
-    ls.valign = VALIGN_TOP
+    # Speed Widget
+    speed = SpeedWidget(surface, x=0, y=gear.y, w=gear.x-5, h=50, fontsize=35)
+    page.add(speed)
+    ls = LabelWidget(surface, x=speed.x, y=speed.yy, w=speed.w, h=20, value="km/h", fontsize=16)
     page.add(ls)
 
-    rpmpercent = RPMPercentWidget(surface, rpms.x, ls.yy, rpms.w, rpms.h)
-    rpms.align = ALIGN_RIGHT
-    page.add(rpmpercent)
-    ls = LabelWidget(surface, rpmpercent.x, rpmpercent.yy, rpmpercent.w, 30, "rpms %")
-    ls.fontsize = 16
-    ls.valign = VALIGN_TOP
+    rpms = RPMWidget(surface, x=gear.xx+5, y=gear.y, w=SCREEN_WIDTH-gear.xx-5, h=speed.h, fontsize=35)
+    page.add(rpms)
+    ls = LabelWidget(surface, x=rpms.x, y=rpms.yy, w=rpms.w, h=30, value="rpms", fontsize=16)
     page.add(ls)
 
     return page
