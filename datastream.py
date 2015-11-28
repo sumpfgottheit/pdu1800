@@ -5,7 +5,6 @@ from collections import namedtuple
 import time
 import socket
 import select
-from util import get_lan_ip
 from constants import *
 from config import *
 import pickle
@@ -107,10 +106,10 @@ class MockBaseDataStream(BaseDataStream):
         return self.car.packet
 
 class PDU1800DataStream(BaseDataStream):
-    def __init__(self, port):
+    def __init__(self, ip, port):
         super(PDU1800DataStream, self).__init__()
         self.port = port
-        local_ip = get_lan_ip()
+        local_ip = ip
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setblocking(0)
         self.sock.bind((local_ip, self.port))

@@ -5,6 +5,7 @@ from pygame import Rect
 from pygame.font import Font
 from config import *
 from constants import *
+from util import get_lan_ip, get_interface_ip
 
 dirty_rects = []
 widgets = {}
@@ -230,6 +231,9 @@ class RPMBarWidget(Widget):
             return True
         return False
 
+    def draw(self):
+        for tile in self.tiles:
+            tile.draw()
 
 def fill_background(surface):
     _widgets = {}
@@ -266,6 +270,10 @@ class Page(object):
         self.widgets.append(widget)
         if hasattr(widget, 'listen') and getattr(widget, 'listen') is not None:
             self.dynamic_widgets.append(widget)
+    def draw_all(self):
+        self.surface.fill(BACKGROUND_COLOR)
+        for widget in self.widgets:
+            widget.draw()
 
 def create_page_0(surface):
     page = Page('Base', surface)
@@ -296,3 +304,28 @@ def create_page_0(surface):
 def create_pages(surface):
     global pages
     pages.append(create_page_0(surface))
+
+class Overlay(object):
+    def __init__(self, surface):
+        self.surface = surface
+        self.widgets = []
+        self.label_ip = LabelWidget(surface, x=10, y=10, w=SCREEN_WIDTH-20, h=50, value="Listen on: %s:%s" % (IP, UDP_PORT), fontsize=14)
+        self.label_ip.background_color = GREY
+        self.label_ip.font_color = BLACK
+        self.widgets.append(self.label_ip)
+        self.label_quit = LabelWidget(surface, x=10, y=70, w=SCREEN_WIDTH-20, h=50, value="Quit", fontsize=14)
+        self.label_quit.background_color = GREY
+        self.label_quit.font_color = BLACK
+        self.widgets.append(self.label_quit)
+
+    def display(self):
+        for widget in self.widgets:
+            widget.draw()
+            widget.add_to_dirty_rects()
+
+    def quit_pressed(self, pos):
+        if self.label_quit.rect.collidepoint(pos):
+            return True
+        else:
+            return False
+

@@ -23,7 +23,7 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, SCREEN_DEEP)
 # Fill surface
 surface = pygame.Surface(screen.get_size())
 surface = surface.convert()
-surface.fill(BLACK)
+surface.fill(BACKGROUND_COLOR)
 
 #fill_background(surface)
 
@@ -40,6 +40,8 @@ for widget in page.widgets:
 screen.blit(surface, (0, 0))
 pygame.display.flip()
 running = True
+show_overlay = False
+overlay = Overlay(surface)
 
 d = SimDataPacket
 while running:
@@ -47,11 +49,14 @@ while running:
     # Read from Network
     #
     if datastream.has_data_available:
-        d = datastream.packet
+        d = datastream.packet   # type: SimDataPacket
         clear_dirty_rects()
 
         for widget in page.dynamic_widgets:
             widget.update(d)
+
+    if show_overlay:
+        overlay.display()
 
     for event in pygame.event.get():
         if event.type == QUIT:
@@ -59,16 +64,19 @@ while running:
             pygame.quit()
             sys.exit()
         elif event.type == pygame.MOUSEBUTTONDOWN:
-#            print("Pos: %sx%s\n" % pygame.mouse.get_pos())
-#            if textpos.collidepoint(pygame.mouse.get_pos()):
-            running = False
-            pygame.quit()
-            sys.exit()
+            if show_overlay:
+                mousepos = pygame.mouse.get_pos()
+                print mousepos
+                if overlay.quit_pressed(mousepos):
+                    running = False
+                show_overlay = False
+                page.draw_all()
+            else:
+                show_overlay = True
         elif event.type == KEYDOWN and event.key == K_ESCAPE:
             running = False
 
     screen.blit(surface, (0, 0))
-    #print dirty_rects
     pygame.display.update(dirty_rects)
 
 pygame.quit()

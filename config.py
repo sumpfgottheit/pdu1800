@@ -1,5 +1,5 @@
 __author__ = 'Florian'
-
+from util import get_lan_ip
 #################
 # CONFIGURATION #
 #################
@@ -9,6 +9,7 @@ __author__ = 'Florian'
 #
 
 UDP_PORT = 18877
+IP = get_lan_ip()
 BUF_SIZE = 4096
 TIMEOUT_IN_SECONDS = 0.5
 
@@ -57,7 +58,7 @@ if sys.platform == 'darwin':
     #from datastream import MockBaseDataStream
     #datastream = MockBaseDataStream()
     from datastream import PDU1800DataStream
-    datastream = PDU1800DataStream(port=UDP_PORT)
+    datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
 elif sys.platform == 'linux2':
 
     from evdev import InputDevice, list_devices
