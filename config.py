@@ -11,7 +11,7 @@ from util import get_lan_ip
 UDP_PORT = 18877
 IP = get_lan_ip()
 BUF_SIZE = 4096
-TIMEOUT_IN_SECONDS = 0.5
+TIMEOUT_IN_SECONDS = 0.1
 
 #
 SCREEN_WIDTH = 320
