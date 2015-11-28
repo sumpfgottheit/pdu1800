@@ -55,12 +55,16 @@ import os, sys
 if sys.platform == 'darwin':
     # Display on Laptop Screen on the left
     os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (-400,100)
-    #from datastream import MockBaseDataStream
-    #datastream = MockBaseDataStream()
-    from datastream import PDU1800DataStream
-    datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
+    from datastream import MockBaseDataStream
+    datastream = MockBaseDataStream()
+    #from datastream import PDU1800DataStream
+    #datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
 elif sys.platform == 'linux2':
-
+    if os.path.isfile('/etc/pointercal'):
+        os.environ["TSLIB_CALIBFILE"] = '/etc/pointercal'
+    os.putenv('SDL_VIDEODRIVER', 'fbcon')
+    os.environ["SDL_FBDEV"] = "/dev/fb1"
+    os.environ["SDL_MOUSEDRV"] = "TSLIB"
     from evdev import InputDevice, list_devices
 
     devices = map(InputDevice, list_devices())
@@ -68,11 +72,8 @@ elif sys.platform == 'linux2':
     for dev in devices:
         if dev.name == "ADS7846 Touchscreen":
             eventX = dev.fn
-    os.environ["SDL_FBDEV"] = "/dev/fb1"
-    os.environ["SDL_MOUSEDRV"] = "TSLIB"
+
     os.environ["SDL_MOUSEDEV"] = eventX
-    if os.path.isfile('/etc/pointercal'):
-        os.environ["TSLIB_CALIBFILE"] = '/etc/pointercal'
     from datastream import PDU1800DataStream
     datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
 #
