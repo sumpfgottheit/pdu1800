@@ -8,6 +8,8 @@ from util import get_lan_ip
 # CHANGE FROM HERE
 #
 
+MOUSE_SWAP_COORDINATES = False
+
 UDP_PORT = 18877
 IP = get_lan_ip()
 BUF_SIZE = 4096
@@ -65,7 +67,8 @@ elif sys.platform == 'linux2':
     os.putenv('SDL_VIDEODRIVER', 'fbcon')
     os.environ["SDL_FBDEV"] = "/dev/fb1"
     os.environ["SDL_MOUSEDRV"] = "TSLIB"
-    from evdev import InputDevice, list_devices
+    os.environ["SDL_MOUSEDEV"] = "/dev/input/touchscreen"
+   from evdev import InputDevice, list_devices
 
     devices = map(InputDevice, list_devices())
     eventX=""
@@ -74,6 +77,7 @@ elif sys.platform == 'linux2':
             eventX = dev.fn
 
     os.environ["SDL_MOUSEDEV"] = eventX
+    MOUSE_SWAP_COORDINATES = False
     from datastream import PDU1800DataStream
     datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
 #
