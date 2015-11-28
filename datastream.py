@@ -3,8 +3,12 @@ __author__ = 'saf'
 
 from collections import namedtuple
 import time
+import socket
+import select
+from util import get_lan_ip
 from constants import *
-
+from config import *
+import pickle
 
 SimDataPacket = namedtuple('SimDataPacketBase', ['version', GEAR, RPM, SPEED, MAX_RPM])
 
@@ -101,6 +105,29 @@ class MockBaseDataStream(BaseDataStream):
             self.car.brake()
 
         return self.car.packet
+
+class PDU1800DataStream(BaseDataStream):
+    def __init__(self, port):
+        super(PDU1800DataStream, self).__init__()
+        self.port = port
+        local_ip = get_lan_ip()
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.setblocking(0)
+        self.sock.bind((local_ip, self.port))
+
+    @property
+    def has_data_available(self):
+        ready = select.select([self.sock], [], [], TIMEOUT_IN_SECONDS)
+        return ready[0]
+
+    @property
+    def packet(self):
+        d = self.sock.recv(BUF_SIZE)  # Recieve from udp
+        d = pickle.loads(d)   # unpickle the data
+        packet = SimDataPacket(1, d['gear'], d['rpms'], d['kmh'], d['max_rpm'])
+        return packet
+
+
 
 if __name__== '__main__':
     stream = MockBaseDataStream()

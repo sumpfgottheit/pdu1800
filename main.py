@@ -36,13 +36,6 @@ page = pages[current_page_index]
 for widget in page.widgets:
     widget.draw()
 
-#
-# Set up Networking
-#
-#local_ip = get_lan_ip()
-#sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#sock.setblocking(0)
-#sock.bind((local_ip, UDP_PORT))
 
 screen.blit(surface, (0, 0))
 pygame.display.flip()

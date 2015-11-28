@@ -4,31 +4,13 @@ __author__ = 'Florian'
 # CONFIGURATION #
 #################
 
-import os, sys
-if sys.platform == 'darwin':
-    # Display on Laptop Screen on the left
-    os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (-400,100)
-    from datastream import MockBaseDataStream
-    datastream = MockBaseDataStream()
-elif sys.platform == 'linux2':
 
-    from evdev import InputDevice, list_devices
-
-    devices = map(InputDevice, list_devices())
-    eventX=""
-    for dev in devices:
-        if dev.name == "ADS7846 Touchscreen":
-            eventX = dev.fn
-    os.environ["SDL_FBDEV"] = "/dev/fb1"
-    os.environ["SDL_MOUSEDRV"] = "TSLIB"
-    os.environ["SDL_MOUSEDEV"] = eventX
-
-#
 # CHANGE FROM HERE
 #
 
 UDP_PORT = 18877
 BUF_SIZE = 4096
+TIMEOUT_IN_SECONDS = 0.5
 
 #
 SCREEN_WIDTH = 320
@@ -45,8 +27,6 @@ ALIGN_LEFT = 2
 VALIGN_CENTER = 0
 VALIGN_TOP = 1
 VALIGN_BOTTOM = 2
-
-
 
 #
 # Stop changing. Of course - you can do, but it should not be necessary
@@ -66,9 +46,30 @@ GREY   = (214, 214, 214)
 
 BACKGROUND_COLOR = BLACK
 FOREGROUND_COLOR = WHITE
-
-TIMEOUT_IN_SECONDS = 0.5
 #
 #
 #
 
+import os, sys
+if sys.platform == 'darwin':
+    # Display on Laptop Screen on the left
+    os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (-400,100)
+    #from datastream import MockBaseDataStream
+    #datastream = MockBaseDataStream()
+    from datastream import PDU1800DataStream
+    datastream = PDU1800DataStream(port=UDP_PORT)
+elif sys.platform == 'linux2':
+
+    from evdev import InputDevice, list_devices
+
+    devices = map(InputDevice, list_devices())
+    eventX=""
+    for dev in devices:
+        if dev.name == "ADS7846 Touchscreen":
+            eventX = dev.fn
+    os.environ["SDL_FBDEV"] = "/dev/fb1"
+    os.environ["SDL_MOUSEDRV"] = "TSLIB"
+    os.environ["SDL_MOUSEDEV"] = eventX
+    from datastream import PDU1800DataStream
+    datastream = PDU1800DataStream(port=UDP_PORT)
+#
