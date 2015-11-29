@@ -64,16 +64,20 @@ while running:
             pygame.quit()
             sys.exit()
         elif event.type == pygame.MOUSEBUTTONDOWN:
+            pos = pygame.mouse.get_pos()
+            print( pos)
+            pygame.mouse.get_rel()
             if show_overlay:
-                pos = pygame.mouse.get_pos()
-                if MOUSE_SWAP_COORDINATES:
-                    pos = pos[1], pos[0]
+                #if MOUSE_SWAP_COORDINATES:
+                #    pos = pos[1], pos[0]
+                #    print pos
                 if overlay.quit_pressed(pos):
                     running = False
                 show_overlay = False
                 page.draw_all()
             else:
                 show_overlay = True
+            pygame.event.clear()
         elif event.type == KEYDOWN and event.key == K_ESCAPE:
             running = False
 

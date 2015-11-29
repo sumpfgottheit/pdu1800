@@ -133,7 +133,7 @@ if __name__== '__main__':
     while True:
         if stream.has_data_available:
             packet = stream.packet
-            print packet
+            print( packet)
 
 
 

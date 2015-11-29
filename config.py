@@ -61,14 +61,14 @@ if sys.platform == 'darwin':
     datastream = MockBaseDataStream()
     #from datastream import PDU1800DataStream
     #datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
-elif sys.platform == 'linux2':
+elif sys.platform.startswith('linux'):
     if os.path.isfile('/etc/pointercal'):
         os.environ["TSLIB_CALIBFILE"] = '/etc/pointercal'
     os.putenv('SDL_VIDEODRIVER', 'fbcon')
-    os.environ["SDL_FBDEV"] = "/dev/fb1"
-    os.environ["SDL_MOUSEDRV"] = "TSLIB"
-    os.environ["SDL_MOUSEDEV"] = "/dev/input/touchscreen"
-   from evdev import InputDevice, list_devices
+    os.putenv('SDL_FBDEV'      , '/dev/fb1')
+    os.putenv('SDL_MOUSEDRV'   , 'TSLIB')
+    os.putenv('SDL_MOUSEDEV'   , '/dev/input/touchscreen')
+    from evdev import InputDevice, list_devices
 
     devices = map(InputDevice, list_devices())
     eventX=""
@@ -76,8 +76,8 @@ elif sys.platform == 'linux2':
         if dev.name == "ADS7846 Touchscreen":
             eventX = dev.fn
 
-    os.environ["SDL_MOUSEDEV"] = eventX
-    MOUSE_SWAP_COORDINATES = False
+    #os.environ["SDL_MOUSEDEV"] = eventX
+    MOUSE_SWAP_COORDINATES = True
     from datastream import PDU1800DataStream
     datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
 #
