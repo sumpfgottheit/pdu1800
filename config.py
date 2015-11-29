@@ -8,8 +8,6 @@ from util import get_lan_ip
 # CHANGE FROM HERE
 #
 
-MOUSE_SWAP_COORDINATES = False
-
 UDP_PORT = 18877
 IP = get_lan_ip()
 BUF_SIZE = 4096
@@ -76,8 +74,7 @@ elif sys.platform.startswith('linux'):
         if dev.name == "ADS7846 Touchscreen":
             eventX = dev.fn
 
-    #os.environ["SDL_MOUSEDEV"] = eventX
-    MOUSE_SWAP_COORDINATES = True
+    os.environ["SDL_MOUSEDEV"] = eventX
     from datastream import PDU1800DataStream
     datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
 #

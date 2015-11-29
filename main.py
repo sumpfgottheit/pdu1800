@@ -15,7 +15,9 @@ import sys
 from datastream import SimDataPacket
 
 
-pygame.init()
+#pygame.init()
+pygame.font.init()
+pygame.display.init()
 
 # set up the window
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, SCREEN_DEEP)
@@ -65,12 +67,8 @@ while running:
             sys.exit()
         elif event.type == pygame.MOUSEBUTTONDOWN:
             pos = pygame.mouse.get_pos()
-            print( pos)
             pygame.mouse.get_rel()
             if show_overlay:
-                #if MOUSE_SWAP_COORDINATES:
-                #    pos = pos[1], pos[0]
-                #    print pos
                 if overlay.quit_pressed(pos):
                     running = False
                 show_overlay = False
