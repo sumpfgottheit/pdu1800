@@ -154,6 +154,42 @@ class SpeedWidget(TextWidget):
             return True
         return False
 
+class PosWidget(TextWidget):
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER):
+        super(PosWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign)
+        self.listen = POS
+        self._num_cars = 0
+        self._pos = 0
+
+    def update(self, value):
+        num_cars = value.num_cars
+        pos = value.pos
+        if num_cars != self._num_cars or pos != self._pos:
+            self.value = "%d/%d" % (pos, num_cars)
+            self._num_cars = num_cars
+            self._pos = pos
+            self.add_to_dirty_rects()
+            self.draw()
+            return True
+        return
+
+class LapsWidget(TextWidget):
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER):
+        super(LapsWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign)
+        self.listen = LAPS_COMPLETED
+        self.laps_completed = -2
+
+    def update(self, value):
+        num_laps = value.num_laps
+        laps_completed = value.laps_completed
+        if laps_completed != self.laps_completed:
+            self.value = "%d/%d" % (laps_completed+1, num_laps)
+            self.laps_completed = laps_completed
+            self.add_to_dirty_rects()
+            self.draw()
+            return True
+        return
+
 class RPMPercentWidget(TextWidget):
     def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER):
         super(RPMPercentWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign)
@@ -206,20 +242,30 @@ class RPMBarWidget(Widget):
         self.tiles = [RPMBarTile(surface, x=(SCREEN_WIDTH / self.NUM_TILES) * i + 1, y=self.y, w=(SCREEN_WIDTH/self.NUM_TILES+1), h=self.h, color=self.get_color(i)) for i in range(self.NUM_TILES)]
         self.tiles_shown = [False] * self.NUM_TILES
         self.num_tiles_shown = -1
+                           #GREEEN                                          #YELLOW                      #RED
+                           #0    1    2     3    4     5    6     7    8     9    10    11    12    13    14    15    16    17    18    19
+        self.percent_map = [0.0, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99, 1.00]
+        self.max_rpm = 1
 
     def get_color(self, i):
-        if i <= self.NUM_TILES-9:
+        if i <= 9:
             return GREEN
-        elif i <= self.NUM_TILES-5:
-            return RPM_YELLOW
-        else:
-            return RED
+        elif i <= 14:
+            return YELLOW
+        return RED
+
+    def get_tiles_shown(self, percent):
+        return sum(percent >= map_value for map_value in self.percent_map)
 
     def update(self, value):
         max_rpm = value.max_rpm
         rpm = value.rpm
-        percent = round(float(rpm) / max_rpm, 2)
-        num_tiles_shown = int(percent * self.NUM_TILES)
+        if max_rpm == 0 and rpm > self.max_rpm:
+            self.max_rpm = rpm
+        else:
+            self.max_rpm = max_rpm
+        percent = round(float(rpm) / self.max_rpm, 2)
+        num_tiles_shown = self.get_tiles_shown(percent)
         if num_tiles_shown != self.num_tiles_shown:
             for i in range(self.NUM_TILES):
                 self.tiles[i].show()
@@ -277,27 +323,43 @@ class Page(object):
 
 def create_page_0(surface):
     page = Page('Base', surface)
+    LABEL_HEIGHT=20
+    DEFAULT_HEIGHT=50
 
     # RPM BAR Widget
     bar = RPMBarWidget(surface, 0, 0, SCREEN_WIDTH ,20)
     page.add(bar)
 
     # Gear Number
-    gear  = GearNumberWidget(surface, x=SCREEN_WIDTH/2-40, y=40, w=80, h=120, fontsize=130)
+    gear  = GearNumberWidget(surface, x=SCREEN_WIDTH/2-40, y=40, w=80, h=125, fontsize=130)
     page.add(gear)
-    lg = LabelWidget(surface, x=gear.x, y=gear.yy, w=gear.w, h=30, value="Gear", fontsize=16)
+    lg = LabelWidget(surface, x=gear.x, y=gear.yy, w=gear.w, h=LABEL_HEIGHT, value="Gear", fontsize=16)
     page.add(lg)
 
     # Speed Widget
-    speed = SpeedWidget(surface, x=0, y=gear.y, w=gear.x-5, h=50, fontsize=35)
+    speed = SpeedWidget(surface, x=0, y=gear.y, w=gear.x-5, h=DEFAULT_HEIGHT, fontsize=35)
     page.add(speed)
-    ls = LabelWidget(surface, x=speed.x, y=speed.yy, w=speed.w, h=20, value="km/h", fontsize=16)
+    ls = LabelWidget(surface, x=speed.x, y=speed.yy, w=speed.w, h=LABEL_HEIGHT, value="km/h", fontsize=16)
     page.add(ls)
 
     rpms = RPMWidget(surface, x=gear.xx+5, y=gear.y, w=SCREEN_WIDTH-gear.xx-5, h=speed.h, fontsize=35)
     page.add(rpms)
-    ls = LabelWidget(surface, x=rpms.x, y=rpms.yy, w=rpms.w, h=30, value="rpms", fontsize=16)
+    ls = LabelWidget(surface, x=rpms.x, y=rpms.yy, w=rpms.w, h=LABEL_HEIGHT, value="rpms", fontsize=16)
     page.add(ls)
+
+    # Pos Widget
+    pos = PosWidget(surface, x=0, y=speed.yy+LABEL_HEIGHT+5, w=gear.x-5, h=DEFAULT_HEIGHT, fontsize=35)
+    page.add(pos)
+    ls = LabelWidget(surface, x=pos.x, y=pos.yy, w=pos.w, h=LABEL_HEIGHT, value="Pos", fontsize=16)
+    page.add(ls)
+
+    # Laps Widget
+    laps = LapsWidget(surface, x=rpms.x, y=pos.y, w=rpms.w, h=DEFAULT_HEIGHT, fontsize=35)
+    page.add(laps)
+    ls = LabelWidget(surface, x=laps.x, y=laps.yy, w=laps.w, h=LABEL_HEIGHT, value="Laps", fontsize=16)
+    page.add(ls)
+
+
 
     return page
 

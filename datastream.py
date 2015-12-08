@@ -8,8 +8,9 @@ import select
 from constants import *
 from config import *
 import pickle
+import random
 
-SimDataPacket = namedtuple('SimDataPacketBase', ['version', GEAR, RPM, SPEED, MAX_RPM])
+SimDataPacket = namedtuple('SimDataPacketBase', ['version', GEAR, RPM, SPEED, MAX_RPM, NUM_CARS, POS, NUM_LAPS, LAPS_COMPLETED])
 
 class SimulatedCar(object):
     VERSION=1
@@ -26,11 +27,23 @@ class SimulatedCar(object):
         self.gear = self.MIN_GEAR
         self.rpm = self.MIN_RPM
         self.speed = 0
+        self.packet_id = 0
+        self.pos = 1
+        self.num_cars = 2
+        self.num_laps = 98
+        self.laps_completed = 0
 
     @property
     def packet(self):
+        self.packet_id += 1
+        if self.packet_id % 200 == 0:
+            self.pos = 2 if self.pos == 1 else 1
+        if self.packet_id % 300 == 0:
+            self.num_cars = random.randint(1,4)
+        if self.packet_id % 400 == 0:
+            self.laps_completed += 1
         self.speed = int(self.MAX_SPEED * ((self.rpm + (self.gear * self.MAX_RPM)) / self. MAX_RPM_GEAR))
-        return SimDataPacket(self.VERSION, self.gear, self.rpm, self.speed, self.MAX_RPM)
+        return SimDataPacket(self.VERSION, self.gear, self.rpm, self.speed, self.MAX_RPM, self.num_cars, self.pos, self.num_laps, self.laps_completed)
 
     def accelerate(self, percent=100):
         if self.gear == self.MIN_GEAR:
@@ -123,7 +136,7 @@ class PDU1800DataStream(BaseDataStream):
     def packet(self):
         d = self.sock.recv(BUF_SIZE)  # Recieve from udp
         d = pickle.loads(d)   # unpickle the data
-        packet = SimDataPacket(1, d['gear'], d['rpms'], d['kmh'], d['max_rpm'])
+        packet = SimDataPacket(1, d['gear'], d['rpms'], d['kmh'], d['max_rpm'], d['num_cars'], d['pos'], d['num_laps'], d['laps_completed'])
         return packet
 
 
