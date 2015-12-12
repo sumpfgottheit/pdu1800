@@ -28,6 +28,15 @@ ALIGN_LEFT = 2
 VALIGN_CENTER = 0
 VALIGN_TOP = 1
 VALIGN_BOTTOM = 2
+#
+#
+#
+BORDER_TOP = 't'
+BORDER_BOTTOM = 'b'
+BORDER_LEFT = 'l'
+BORDER_RIGHT = 'r'
+BORDER_TLR = [BORDER_TOP, BORDER_LEFT, BORDER_RIGHT]
+BORDER_BLR = [BORDER_BOTTOM, BORDER_LEFT, BORDER_RIGHT]
 
 #
 # Stop changing. Of course - you can do, but it should not be necessary
@@ -55,10 +64,12 @@ import os, sys
 if sys.platform == 'darwin':
     # Display on Laptop Screen on the left
     os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (-400,100)
-    from datastream import MockBaseDataStream
-    datastream = MockBaseDataStream()
+    #from datastream import MockBaseDataStream
+    #datastream = MockBaseDataStream()
     #from datastream import PDU1800DataStream
     #datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
+    from datastream import PDU1800DatasStreamRepeater
+    datastream = PDU1800DatasStreamRepeater()
 elif sys.platform.startswith('linux'):
     if os.path.isfile('/etc/pointercal'):
         os.environ["TSLIB_CALIBFILE"] = '/etc/pointercal'

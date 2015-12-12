@@ -3,14 +3,18 @@ __author__ = 'saf'
 
 from collections import namedtuple
 import time
+import timeit
 import socket
 import select
 from constants import *
 from config import *
 import pickle
 import random
+from datetime import datetime
+import json
 
-SimDataPacket = namedtuple('SimDataPacketBase', ['version', GEAR, RPM, SPEED, MAX_RPM, NUM_CARS, POS, NUM_LAPS, LAPS_COMPLETED])
+SimDataPacket = namedtuple('SimDataPacketBase', ['version', GEAR, RPM, SPEED, MAX_RPM, NUM_CARS, POS, NUM_LAPS, LAPS_COMPLETED,
+                                                 CURRENT_TIME, LAST_TIME, BEST_TIME])
 
 class SimulatedCar(object):
     VERSION=1
@@ -32,6 +36,11 @@ class SimulatedCar(object):
         self.num_cars = 2
         self.num_laps = 98
         self.laps_completed = 0
+        self.last_time = self.current_time = self.best_time = 0
+        self.t = datetime.now()
+
+    def times2delta(self, a, b):
+        return (a - b).total_seconds()
 
     @property
     def packet(self):
@@ -40,10 +49,16 @@ class SimulatedCar(object):
             self.pos = 2 if self.pos == 1 else 1
         if self.packet_id % 300 == 0:
             self.num_cars = random.randint(1,4)
+        self.current_time = self.times2delta(self.t, datetime.now())
         if self.packet_id % 400 == 0:
             self.laps_completed += 1
+            self.last_time = self.current_time
+            self.t = datetime.now()
+            if self.last_time < self.best_time:
+                self.best_time = self.last_time
         self.speed = int(self.MAX_SPEED * ((self.rpm + (self.gear * self.MAX_RPM)) / self. MAX_RPM_GEAR))
-        return SimDataPacket(self.VERSION, self.gear, self.rpm, self.speed, self.MAX_RPM, self.num_cars, self.pos, self.num_laps, self.laps_completed)
+        return SimDataPacket(self.VERSION, self.gear, self.rpm, self.speed, self.MAX_RPM, self.num_cars, self.pos, self.num_laps, self.laps_completed,
+                             self.current_time, self.last_time, self.best_time)
 
     def accelerate(self, percent=100):
         if self.gear == self.MIN_GEAR:
@@ -135,18 +150,66 @@ class PDU1800DataStream(BaseDataStream):
     @property
     def packet(self):
         d = self.sock.recv(BUF_SIZE)  # Recieve from udp
-        d = pickle.loads(d)   # unpickle the data
-        packet = SimDataPacket(1, d['gear'], d['rpms'], d['kmh'], d['max_rpm'], d['num_cars'], d['pos'], d['num_laps'], d['laps_completed'])
+        packet = pickle.loads(d)   # unpickle the data
         return packet
 
+class PDU1800DatasStreamRepeater(BaseDataStream):
+    def __init__(self, skip_packets = 1300):
+        with open('pdu1800_datastream.json') as f:
+            self.stream = json.load(f)
+        self.t = 0
+        self.stream_iterator = iter(self.stream)
+        self.next_t, self.next_packet = self.stream_iterator.next()
+        while self.next_packet['physics']['speed_kmh'] < 1.0:
+            self.next_t, self.next_packet = self.stream_iterator.next()
+        for i in range(skip_packets):
+            self.next_t, self.next_packet = self.stream_iterator.next()
+        self.ts = time.clock()
 
+
+    @property
+    def has_data_available(self):
+        #elapsed_since_last_visit = time.clock() - self.ts
+        #t = abs(self.next_t - elapsed_since_last_visit)
+        #self.ts = time.clock()
+        #time.sleep(min(t, 0.2))
+        return True
+
+    @property
+    def packet(self):
+        packet = self.next_packet
+        self.next_t, self.next_packet = self.stream_iterator.next()
+        return packet
 
 if __name__== '__main__':
-    stream = MockBaseDataStream()
-    while True:
-        if stream.has_data_available:
-            packet = stream.packet
-            print( packet)
+    #stream = MockBaseDataStream()
+    #while True:
+    #    if stream.has_data_available:
+    #        packet = stream.packet
+    #        print( packet)
+    datastream = PDU1800DataStream(IP, UDP_PORT)
+    l = []
+    t = timeit.default_timer()
+    record = False
+    try:
+        while True:
+            if datastream.has_data_available:
+                d = datastream.packet
+                now = timeit.default_timer()
+                delta_t = now - t
+                if not record:
+                    if d['physics']['speed_kmh'] > 1.0:
+                        record = True
+                    else:
+                        continue
+                l.append((delta_t, d))
+                t = now
+    except KeyboardInterrupt:
+        if len(l) > 0:
+            with open('pdu1800_datastream.json', 'w') as f:
+                f.write(json.dumps(l, indent=2))
+
+
 
 
 

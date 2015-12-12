@@ -44,14 +44,12 @@ pygame.display.flip()
 running = True
 show_overlay = False
 overlay = Overlay(surface)
-
-d = SimDataPacket
 while running:
     #
     # Read from Network
     #
     if datastream.has_data_available:
-        d = datastream.packet   # type: SimDataPacket
+        d = datastream.packet
         clear_dirty_rects()
 
         for widget in page.dynamic_widgets:

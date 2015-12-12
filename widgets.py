@@ -1,22 +1,39 @@
 __author__ = 'Florian'
 
+
 import pygame
 from pygame import Rect
 from pygame.font import Font
 from config import *
 from constants import *
-from util import get_lan_ip, get_interface_ip
+import sys
+from collections import deque
+from copy import deepcopy
 
 dirty_rects = []
 widgets = {}
 pages = []
+
+def getit(key, h):
+    """Return h[key]. If key has '.' in it like static.max_fuel, return h[static][max_fuel]
+    getit('physics.tyre_wear', h') will get you h['physics']['tyre_wear'].
+    It's just syntactic sugar, but easier to read.
+
+    Exceptions are not catched
+    """
+    if '.' in key:
+        keys = key.split('.')
+        return h.get(keys[0]).get(keys[1])
+    else:
+        return h.get(key)
+
 
 def clear_dirty_rects():
     global dirty_rects
     del dirty_rects[:]
 
 class Widget(object):
-    def __init__(self, surface, x, y, w, h, fill_background=False, draw_borders=True):
+    def __init__(self, surface, x, y, w, h, fill_background=False, borders=True):
         self.surface = surface
         self.x = x
         self.y = y
@@ -26,32 +43,58 @@ class Widget(object):
         self.background_color = BACKGROUND_COLOR
         self.border_color = FOREGROUND_COLOR
         self.fill_background = fill_background
-        self.draw_borders = draw_borders
+        self.borders = borders
 
     def draw(self):
-        if self.fill_background and not self.draw_borders:
-            pygame.draw.rect(self.surface, self.background_color, self.rect, 0)
-        elif self.fill_background and self.draw_borders:
-            pygame.draw.rect(self.surface, self.background_color, self.rect, 0)
-            pygame.draw.rect(self.surface, self.border_color, self.rect, 1)
-        elif not self.fill_background and self.draw_borders:
-            pygame.draw.rect(self.surface, self.border_color, self.rect, 1)
+        if self.fill_background:
+            pygame.draw.rect(self.surface, self.background_color, self.rect, 0) # Fill with Background color as width is 0
+        if self.draw_borders:
+            pygame.draw.rect(self.surface, self.border_color, self.rect, 1)     # Draw border as, but not fill as width is 1
+        else:
+            if self.border_left:
+                pygame.draw.line(self.surface, self.border_color, (self.x, self.y), (self.x, self.yy))
+            if  self.border_right:
+                pygame.draw.line(self.surface, self.border_color, (self.xx, self.y), (self.xx, self.yy))
+            if self.border_top:
+                pygame.draw.line(self.surface, self.border_color, (self.x, self.y), (self.xx, self.y))
+            if self.border_bottom:
+                pygame.draw.line(self.surface, self.border_color, (self.x, self.yy), (self.xx, self.yy))
+
+    @property
+    def borders(self):
+        return self._borders
+
+    @borders.setter
+    def borders(self, borders):
+        self._borders = borders
+        if isinstance(borders, bool):
+            if borders:
+                self.border_top = self.border_bottom = self.border_left = self.border_right = True
+            else:
+                self.border_top = self.border_bottom = self.border_left = self.border_right = False
+        else:
+            self.border_top = 't' in self.borders
+            self.border_bottom = 'b' in self.borders
+            self.border_left = 'l' in self.borders
+            self.border_right = 'r' in self.borders
+        self.draw_borders = self.border_top and self.border_bottom and self.border_left and self.border_right
+
 
     @property
     def xx(self):
-        return self.x + self.w
+        return self.x + self.w - 1
 
     @property
     def yy(self):
-        return self.y + self.h
+        return self.y + self.h - 1
 
     def add_to_dirty_rects(self):
         global dirty_rects
         dirty_rects.append(self.rect)
 
 class TextWidget(Widget):
-    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER):
-        super(TextWidget, self).__init__(surface, x, y, w, h)
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+        super(TextWidget, self).__init__(surface, x, y, w, h, borders=borders)
         self.value = ""
         self._fontsize = fontsize if fontsize else self.find_font_size()
         self.font = Font(FONT, self._fontsize)
@@ -71,9 +114,12 @@ class TextWidget(Widget):
         self._fontsize = value
         self.font = Font(FONT, value)
 
-    def update(self, value):
-        if self.listen is not None:     # listen == GEAR -> value = d[GEAR]
-            value = getattr(value, self.listen)
+    def update(self, packet):
+        if isinstance(packet, dict):
+            if self.listen is not None:     # listen == GEAR -> value = d[GEAR]
+                value = getit(self.listen, packet)
+        else:
+            value = packet
         if value != self.value:
             self.value = value
             self.add_to_dirty_rects()
@@ -111,17 +157,17 @@ class TextWidget(Widget):
         return size
 
 class LabelWidget(TextWidget):
-    def __init__(self, surface, x, y, w, h, value, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER):
-        super(LabelWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign)
+    def __init__(self, surface, x, y, w, h, value, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+        super(LabelWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
         self.value = value
 
 class GearNumberWidget(TextWidget):
-    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER):
-        super(GearNumberWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign)
-        self.listen = GEAR
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+        super(GearNumberWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
+        self.listen = 'physics.gear'
 
-    def update(self, value):
-        value = getattr(value, self.listen)
+    def update(self, packet):
+        value = getit(self.listen, packet)
         if value == 0:
             value = 'N'
         elif value == -1:
@@ -133,19 +179,18 @@ class GearNumberWidget(TextWidget):
             return True
         return False
 
-
 class RPMWidget(TextWidget):
-    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER):
-        super(RPMWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign)
-        self.listen = RPM
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+        super(RPMWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
+        self.listen = 'physics.rpms'
 
 class SpeedWidget(TextWidget):
-    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER):
-        super(SpeedWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign)
-        self.listen = SPEED
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+        super(SpeedWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
+        self.listen = 'physics.speed_kmh'
 
-    def update(self, value):
-        value = getattr(value, self.listen)
+    def update(self, packet):
+        value = getit(self.listen, packet)
         value = int(round(value))
         if value != self.value:
             self.value = value
@@ -155,15 +200,15 @@ class SpeedWidget(TextWidget):
         return False
 
 class PosWidget(TextWidget):
-    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER):
-        super(PosWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign)
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+        super(PosWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
         self.listen = POS
         self._num_cars = 0
         self._pos = 0
 
-    def update(self, value):
-        num_cars = value.num_cars
-        pos = value.pos
+    def update(self, packet):
+        num_cars = getit('static.num_cars', packet)
+        pos = getit('graphics.position', packet)
         if num_cars != self._num_cars or pos != self._pos:
             self.value = "%d/%d" % (pos, num_cars)
             self._num_cars = num_cars
@@ -174,30 +219,35 @@ class PosWidget(TextWidget):
         return
 
 class LapsWidget(TextWidget):
-    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER):
-        super(LapsWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign)
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+        super(LapsWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
         self.listen = LAPS_COMPLETED
         self.laps_completed = -2
 
-    def update(self, value):
-        num_laps = value.num_laps
-        laps_completed = value.laps_completed
+    def update(self, packet):
+        num_laps = getit('graphics.number_of_laps', packet)
+        laps_completed = getit('graphics.completed_laps', packet)
         if laps_completed != self.laps_completed:
             self.value = "%d/%d" % (laps_completed+1, num_laps)
             self.laps_completed = laps_completed
             self.add_to_dirty_rects()
             self.draw()
             return True
-        return
+        return False
+
+class LaptimeWidget(TextWidget):
+    pass
 
 class RPMPercentWidget(TextWidget):
-    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER):
-        super(RPMPercentWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign)
-        self.listen = RPM
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+        super(RPMPercentWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
+        self.listen = 'physics.rpms'
         self.value = 0
 
-    def update(self, value):
-        percent = int(round(float(value.rpm) / value.max_rpm, 2) * 100)
+    def update(self, packet):
+        rpm = getit('physics.rpm', packet)
+        max_rpm = getit('static.max_rpm', packet)
+        percent = int(round(float(rpm) / max_rpm, 2) * 100)
         if percent != self.value:
             self.value = percent
             self.add_to_dirty_rects()
@@ -257,9 +307,9 @@ class RPMBarWidget(Widget):
     def get_tiles_shown(self, percent):
         return sum(percent >= map_value for map_value in self.percent_map)
 
-    def update(self, value):
-        max_rpm = value.max_rpm
-        rpm = value.rpm
+    def update(self, packet):
+        rpm = getit('physics.rpms', packet)
+        max_rpm = getit('static.max_rpm', packet)
         if max_rpm == 0 and rpm > self.max_rpm:
             self.max_rpm = rpm
         else:
@@ -281,6 +331,93 @@ class RPMBarWidget(Widget):
         for tile in self.tiles:
             tile.draw()
 
+class TimeWidget(TextWidget):
+    def update(self, packet):
+        value = getit(self.listen, packet)[:-2]
+        if value != self.value:
+            self.value = value
+            self.add_to_dirty_rects()
+            self.draw()
+            return True
+        return False
+
+class CurrentTimeWidget(TimeWidget):
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+        super(CurrentTimeWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
+        self.listen = 'graphics.current_time'
+        self.value = None
+
+class DeltaTimeWidget(TextWidget):
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+        super(DeltaTimeWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
+        self.listen = 'graphics.i_current_time'
+        self.last_i_current_time = sys.maxint
+        self.lap_distances = []
+        self.require_initialization = True
+        self.value = 0
+        self.log_current_lap = {}
+        self.log_best_lap = {}
+        self.distances_best_lap = None
+        self.last_distance_compared = -1
+        self.delta = None
+
+    def new_lap(self, packet):
+        distance_traveled = getit('graphics.distance_traveled', packet)
+        distance_traveled_this_lap = distance_traveled - sum(self.lap_distances)
+        self.lap_distances.append(distance_traveled_this_lap)
+        self.last_distance_compared = -1
+
+        i_last_lap = getit('graphics.i_last_time', packet)
+        i_best_lap = getit('graphics.i_best_time', packet)
+        if len(self.log_best_lap) == 0 or i_best_lap == i_last_lap:
+            self.log_best_lap = deepcopy(self.log_current_lap)
+            self.distances_best_lap = deque(sorted(self.log_best_lap.keys()))
+
+        self.log_current_lap = {}
+
+    def update(self, packet):
+        if self.require_initialization:
+            self.lap_distances.append(getit('graphics.distance_traveled', packet))
+            self.require_initialization = False
+            self.value = "n/a"
+            self.add_to_dirty_rects()
+            self.draw()
+            return True
+
+        i_current_time = getit('graphics.i_current_time', packet)
+        if i_current_time < self.last_i_current_time:
+            self.new_lap(packet)
+        self.last_i_current_time = i_current_time                       # remember i_current_time
+
+        lap = getit('graphics.completed_laps', packet) + 1
+        distance_traveled = getit('graphics.distance_traveled', packet)
+        distance_traveled_this_lap = distance_traveled - sum(self.lap_distances)
+        self.log_current_lap[distance_traveled_this_lap] = i_current_time
+        #print "%s - %s - %s" % (lap, self.lap_distances, distance_traveled_this_lap)
+
+        if self.distances_best_lap is not None:
+            try:
+                while self.last_distance_compared < distance_traveled_this_lap:
+                    self.last_distance_compared = self.distances_best_lap.popleft()
+                i_compare_time = self.log_best_lap[self.last_distance_compared]
+            except IndexError:
+                i_compare_time = getit('graphics.i_best_time', packet)
+
+            delta = i_current_time - i_compare_time
+            delta = round(delta / 1000.0, 2)
+
+            if delta != self.delta:
+                self.value = delta
+                if self.delta < 0:
+                    self.font_color = GREEN
+                elif self.delta > 0:
+                    self.font_color = RED
+                self.add_to_dirty_rects()
+                self.draw()
+                return True
+        return False
+
+
 def fill_background(surface):
     _widgets = {}
 
@@ -289,16 +426,16 @@ def fill_background(surface):
         for y in (0, 40, 80, 120, 160, 200):
             key = "%s%s" % (x, y)
             if i % 4 == 0:
-                widget = Widget(surface, x, y, 39, 39, fill_background=False, draw_borders=True)
+                widget = Widget(surface, x, y, 39, 39, fill_background=False, borders=True)
             elif i % 4 == 1:
-                widget = Widget(surface, x, y, 39, 39, fill_background=True, draw_borders=True)
+                widget = Widget(surface, x, y, 39, 39, fill_background=True, borders=True)
                 widget.background_color = GREEN
                 widget.border_color = RED
             elif i % 4 == 2:
-                widget = Widget(surface, x, y, 39, 39, fill_background=True, draw_borders=False)
+                widget = Widget(surface, x, y, 39, 39, fill_background=True, borders=False)
                 widget.background_color = BLUE
             elif i % 4 == 3:
-                widget = Widget(surface, x, y, 39, 390, fill_background=False, draw_borders=False)
+                widget = Widget(surface, x, y, 39, 390, fill_background=False, borders=False)
             _widgets[key] = widget
             i = i + 1
     for widget in _widgets.values():
@@ -331,35 +468,45 @@ def create_page_0(surface):
     page.add(bar)
 
     # Gear Number
-    gear  = GearNumberWidget(surface, x=SCREEN_WIDTH/2-40, y=40, w=80, h=125, fontsize=130)
+    gear  = GearNumberWidget(surface, x=SCREEN_WIDTH/2-40, y=25, w=80, h=125, fontsize=130, borders=BORDER_TLR)
     page.add(gear)
-    lg = LabelWidget(surface, x=gear.x, y=gear.yy, w=gear.w, h=LABEL_HEIGHT, value="Gear", fontsize=16)
+    lg = LabelWidget(surface, x=gear.x, y=gear.yy, w=gear.w, h=LABEL_HEIGHT, value="Gear", fontsize=16, borders=BORDER_BLR)
     page.add(lg)
 
     # Speed Widget
-    speed = SpeedWidget(surface, x=0, y=gear.y, w=gear.x-5, h=DEFAULT_HEIGHT, fontsize=35)
+    speed = SpeedWidget(surface, x=0, y=gear.y, w=gear.x-5, h=DEFAULT_HEIGHT, fontsize=35, borders=BORDER_TLR)
     page.add(speed)
-    ls = LabelWidget(surface, x=speed.x, y=speed.yy, w=speed.w, h=LABEL_HEIGHT, value="km/h", fontsize=16)
+    ls = LabelWidget(surface, x=speed.x, y=speed.yy, w=speed.w, h=LABEL_HEIGHT, value="km/h", fontsize=16, borders=BORDER_BLR)
     page.add(ls)
 
-    rpms = RPMWidget(surface, x=gear.xx+5, y=gear.y, w=SCREEN_WIDTH-gear.xx-5, h=speed.h, fontsize=35)
+    rpms = RPMWidget(surface, x=gear.xx+5, y=gear.y, w=SCREEN_WIDTH-gear.xx-5, h=speed.h, fontsize=35, borders=BORDER_TLR)
     page.add(rpms)
-    ls = LabelWidget(surface, x=rpms.x, y=rpms.yy, w=rpms.w, h=LABEL_HEIGHT, value="rpms", fontsize=16)
+    ls = LabelWidget(surface, x=rpms.x, y=rpms.yy, w=rpms.w, h=LABEL_HEIGHT, value="rpms", fontsize=16, borders=BORDER_BLR)
     page.add(ls)
 
     # Pos Widget
-    pos = PosWidget(surface, x=0, y=speed.yy+LABEL_HEIGHT+5, w=gear.x-5, h=DEFAULT_HEIGHT, fontsize=35)
+    pos = PosWidget(surface, x=0, y=speed.yy+LABEL_HEIGHT+5, w=gear.x-5, h=DEFAULT_HEIGHT, fontsize=35, borders=BORDER_TLR)
     page.add(pos)
-    ls = LabelWidget(surface, x=pos.x, y=pos.yy, w=pos.w, h=LABEL_HEIGHT, value="Pos", fontsize=16)
+    ls = LabelWidget(surface, x=pos.x, y=pos.yy, w=pos.w, h=LABEL_HEIGHT, value="Pos", fontsize=16, borders=BORDER_BLR)
     page.add(ls)
 
     # Laps Widget
-    laps = LapsWidget(surface, x=rpms.x, y=pos.y, w=rpms.w, h=DEFAULT_HEIGHT, fontsize=35)
+    laps = LapsWidget(surface, x=rpms.x, y=pos.y, w=rpms.w, h=DEFAULT_HEIGHT, fontsize=35, borders=BORDER_TLR)
     page.add(laps)
-    ls = LabelWidget(surface, x=laps.x, y=laps.yy, w=laps.w, h=LABEL_HEIGHT, value="Laps", fontsize=16)
+    ls = LabelWidget(surface, x=laps.x, y=laps.yy, w=laps.w, h=LABEL_HEIGHT, value="Laps", fontsize=16, borders=BORDER_BLR)
     page.add(ls)
 
+    # Current Time Widget
+    label_current_time = LabelWidget(surface, x=pos.x, y=pos.yy+LABEL_HEIGHT+5, w=20, h=30, fontsize=12, value="Cur", borders='tlb')
+    page.add(label_current_time)
+    current_time = CurrentTimeWidget(surface, x=label_current_time.xx, y=pos.yy+LABEL_HEIGHT+5, w=96, h=30, fontsize=20, align=ALIGN_CENTER, borders='tbr')
+    page.add(current_time)
 
+    # Delta Time Widget
+    label_delta_time = LabelWidget(surface, x=pos.x, y=label_current_time.yy+5, w=20, h=30, fontsize=12, value=u"d/t", borders='tlb')
+    page.add(label_delta_time)
+    delta_time = DeltaTimeWidget(surface, x=label_delta_time.xx, y=label_delta_time.y, w=96, h=30, fontsize=20, align=ALIGN_CENTER, borders='tbr')
+    page.add(delta_time)
 
     return page
 
