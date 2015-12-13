@@ -9,6 +9,7 @@ from constants import *
 import sys
 from collections import deque
 from copy import deepcopy
+import math
 
 dirty_rects = []
 widgets = {}
@@ -26,6 +27,15 @@ def getit(key, h):
         return h.get(keys[0]).get(keys[1])
     else:
         return h.get(key)
+
+def millisToString(millis):
+    """Taken from Rivalis OV1Info"""
+    hours, x = divmod(int(millis), 3600000)
+    mins, x = divmod(x, 60000)
+    secs, x = divmod(x, 1000)
+    x, y = divmod(x, 10)
+    #return "%d.%02d" % (secs, x) if mins == 0 else "%d:%02d.%03d" % (mins, secs, x)
+    return "%02d:%02d:%02d" % (mins, secs, x)
 
 
 def clear_dirty_rects():
@@ -347,18 +357,66 @@ class CurrentTimeWidget(TimeWidget):
         self.listen = 'graphics.current_time'
         self.value = None
 
+class BestTimeWidget(TimeWidget):
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+        super(BestTimeWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
+        self.listen = 'graphics.i_best_time'
+        self.value = None
+        self.i_value = None
+
+    def update(self, packet):
+        i_value = getit(self.listen, packet)
+        if i_value != self.i_value:
+            self.i_value = i_value
+            self.value = millisToString(i_value)
+            self.add_to_dirty_rects()
+            self.draw()
+            return True
+        return False
+
+
+class LastTimeWidget(TimeWidget):
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+        super(LastTimeWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
+        self.listen = 'graphics.i_last_time'
+        self.value = "--:--:--"
+        self.i_value = "--:--:--"
+        self.color = FOREGROUND_COLOR
+
+    def update(self, packet):
+        i_value = getit(self.listen, packet)
+        if i_value == self.i_value:
+            return False
+        self.i_value = i_value
+        self.value = millisToString(i_value)
+        i_best_time = getit('graphics.i_best_time', packet)
+        i_last_time = getit('graphics.i_last_time', packet)
+        print "%s - %s" % (i_last_time, i_best_time)
+        if i_last_time == i_best_time:
+            self.font_color = GREEN
+        elif (i_best_time - i_last_time) > 1000:
+            self.font_color = FOREGROUND_COLOR
+        else:
+            self.font_color = YELLOW
+        self.add_to_dirty_rects()
+        self.draw()
+        return True
+
+
+
 class DeltaTimeWidget(TextWidget):
     def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
         super(DeltaTimeWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
         self.listen = 'delta'
+        self.i_value = 0.0
 
     def update(self, packet):
-        value = getit(self.listen, packet)
-        if value != self.value:
-            self.value = value
-            if value < 0:
+        i_value = float(getit(self.listen, packet))
+        if i_value != self.i_value:
+            self.value = "%+.3f" % i_value
+            if i_value < 0:
                 self.font_color = GREEN
-            elif value > 0:
+            elif i_value > 0:
                 self.font_color = RED
             else:
                 self.font_color = FOREGROUND_COLOR
@@ -517,22 +575,93 @@ def create_page_0(surface):
     page.add(ls)
 
     # Current Time Widget
-    label_current_time = LabelWidget(surface, x=pos.x, y=pos.yy+LABEL_HEIGHT+5, w=20, h=30, fontsize=12, value="Cur", borders='tlb')
+    label_current_time = LabelWidget(surface, x=pos.x, y=pos.yy+LABEL_HEIGHT+5, w=TIME_LABEL_WIDTH, h=30, fontsize=12, value="Cur", borders='tlb')
     page.add(label_current_time)
-    current_time = CurrentTimeWidget(surface, x=label_current_time.xx, y=pos.yy+LABEL_HEIGHT+5, w=96, h=30, fontsize=20, align=ALIGN_CENTER, borders='tbr')
+    current_time = CurrentTimeWidget(surface, x=label_current_time.xx, y=pos.yy+LABEL_HEIGHT+5, w=TIME_WIDGET_WIDTH, h=30, fontsize=20, align=ALIGN_CENTER, borders='tbr')
     page.add(current_time)
 
     # Delta Time Widget
-    label_delta_time = LabelWidget(surface, x=pos.x, y=label_current_time.yy+5, w=20, h=30, fontsize=12, value=u"d/t", borders='tlb')
+    label_delta_time = LabelWidget(surface, x=current_time.xx+5, y=label_current_time.y, w=TIME_LABEL_WIDTH, h=30, fontsize=12, value=u"d/t", borders='tlb')
     page.add(label_delta_time)
-    delta_time = DeltaTimeWidget(surface, x=label_delta_time.xx, y=label_delta_time.y, w=96, h=30, fontsize=20, align=ALIGN_CENTER, borders='tbr')
+    delta_time = DeltaTimeWidget(surface, x=label_delta_time.xx, y=label_delta_time.y, w=TIME_WIDGET_WIDTH, h=30, fontsize=20, align=ALIGN_CENTER, borders='tbr')
     page.add(delta_time)
+
+    # Last Time Widget
+    label_last_time = LabelWidget(surface, x=label_current_time.x, y=label_current_time.yy+5, w=TIME_LABEL_WIDTH, h=30, fontsize=12, value=u"Lst", borders='tlb')
+    page.add(label_last_time)
+    last_time = LastTimeWidget(surface, x=label_last_time.xx, y=label_last_time.y, w=TIME_WIDGET_WIDTH, h=30, fontsize=20, align=ALIGN_CENTER, borders='tbr')
+    page.add(last_time)
+
+    # best Time Widget
+    label_best_time = LabelWidget(surface, x=label_delta_time.x, y=label_current_time.yy+5, w=TIME_LABEL_WIDTH, h=30, fontsize=12, value=u"Bst", borders='tlb')
+    page.add(label_best_time)
+    best_time = BestTimeWidget(surface, x=label_best_time.xx, y=label_best_time.y, w=TIME_WIDGET_WIDTH, h=30, fontsize=20, align=ALIGN_CENTER, borders='tbr')
+    page.add(best_time)
+
+    return page
+
+def create_page_1(surface):
+    page = Page('Base1', surface)
+    LABEL_HEIGHT=20
+    DEFAULT_HEIGHT=50
+
+    # RPM BAR Widget
+    bar = RPMBarWidget(surface, 0, 0, SCREEN_WIDTH ,20)
+    page.add(bar)
+
+    # Speed Widget
+    w_speed = SpeedWidget(surface, x=0, y=26, w=90, h=DEFAULT_HEIGHT, fontsize=35, borders=BORDER_TLR)
+    page.add(w_speed)
+    l_speed = LabelWidget(surface, x=w_speed.x, y=w_speed.yy, w=w_speed.w, h=LABEL_HEIGHT, value="km/h", fontsize=16, borders=BORDER_BLR)
+    page.add(l_speed)
+
+    # Position Widget
+    w_pos = PosWidget(surface, x=w_speed.x, y=l_speed.yy+4, w=w_speed.w, h=DEFAULT_HEIGHT, fontsize=35, borders=BORDER_TLR)
+    page.add(w_pos)
+    l_pos = LabelWidget(surface, x=w_pos.x, y=w_pos.yy, w=w_pos.w, h=LABEL_HEIGHT, value="Pos", fontsize=16, borders=BORDER_BLR)
+    page.add(l_pos)
+
+    # Laps Widget
+    w_laps = LapsWidget(surface, x=w_speed.x, y=l_pos.yy+4, w=w_speed.w, h=DEFAULT_HEIGHT, fontsize=35, borders=BORDER_TLR)
+    page.add(w_laps)
+    l_laps = LabelWidget(surface, x=w_laps.x, y=w_laps.yy, w=w_laps.w, h=LABEL_HEIGHT, value="Laps", fontsize=16, borders=BORDER_BLR)
+    page.add(l_laps)
+
+    # Gear Number
+    w_gear  = GearNumberWidget(surface, x=w_speed.xx+4, y=w_speed.y, w=80, h=122, fontsize=135, borders=BORDER_TLR)
+    page.add(w_gear)
+    l_gear = LabelWidget(surface, x=w_gear.x, y=w_gear.yy, w=w_gear.w, h=LABEL_HEIGHT, value="Gear", fontsize=16, borders=BORDER_BLR)
+    page.add(l_gear)
+
+    # Current Time Widget
+    l_current_time = LabelWidget(surface, x=w_gear.xx+4, y=w_gear.y, w=TIME_LABEL_WIDTH, h=33, fontsize=16, value="Cur", borders='tlb')
+    page.add(l_current_time)
+    w_current_time = CurrentTimeWidget(surface, x=l_current_time.xx, y=l_current_time.y, w=TIME_WIDGET_WIDTH, h=l_current_time.h, fontsize=20, align=ALIGN_CENTER, borders='tbr')
+    page.add(w_current_time)
+
+    # Delta Time Widget
+    l_delta_time = LabelWidget(surface, x=l_current_time.x, y=l_current_time.yy+4, w=TIME_LABEL_WIDTH, h=33, fontsize=16, value=u"d/t", borders='tlb')
+    page.add(l_delta_time)
+    w_delta_time = DeltaTimeWidget(surface, x=l_delta_time.xx, y=l_delta_time.y, w=TIME_WIDGET_WIDTH, h=l_delta_time.h, fontsize=20, align=ALIGN_CENTER, borders='tbr')
+    page.add(w_delta_time)
+
+    # Last Time Widget
+    l_last_time = LabelWidget(surface, x=l_current_time.x, y=l_delta_time.yy+4, w=TIME_LABEL_WIDTH, h=33, fontsize=16, value=u"Lst", borders='tlb')
+    page.add(l_last_time)
+    w_last_time = LastTimeWidget(surface, x=l_last_time.xx, y=l_last_time.y, w=TIME_WIDGET_WIDTH, h=l_last_time.h, fontsize=20, align=ALIGN_CENTER, borders='tbr')
+    page.add(w_last_time)
+
+    # best Time Widget
+    l_best_time = LabelWidget(surface, x=l_current_time.x, y=l_last_time.yy+4, w=TIME_LABEL_WIDTH, h=33, fontsize=16, value=u"Bst", borders='tlb')
+    page.add(l_best_time)
+    w_best_time = BestTimeWidget(surface, x=l_best_time.xx, y=l_best_time.y, w=TIME_WIDGET_WIDTH, h=l_best_time.h, fontsize=20, align=ALIGN_CENTER, borders='tbr')
+    page.add(w_best_time)
 
     return page
 
 def create_pages(surface):
     global pages
-    pages.append(create_page_0(surface))
+    pages.append(create_page_1(surface))
 
 class Overlay(object):
     def __init__(self, surface):

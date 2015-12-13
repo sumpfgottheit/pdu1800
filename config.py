@@ -38,6 +38,8 @@ BORDER_RIGHT = 'r'
 BORDER_TLR = [BORDER_TOP, BORDER_LEFT, BORDER_RIGHT]
 BORDER_BLR = [BORDER_BOTTOM, BORDER_LEFT, BORDER_RIGHT]
 
+TIME_LABEL_WIDTH=40
+TIME_WIDGET_WIDTH=105
 #
 # Stop changing. Of course - you can do, but it should not be necessary
 #
