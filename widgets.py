@@ -167,7 +167,7 @@ class GearNumberWidget(TextWidget):
         self.listen = 'physics.gear'
 
     def update(self, packet):
-        value = getit(self.listen, packet)
+        value = getit(self.listen, packet) - 1
         if value == 0:
             value = 'N'
         elif value == -1:
@@ -350,6 +350,26 @@ class CurrentTimeWidget(TimeWidget):
 class DeltaTimeWidget(TextWidget):
     def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
         super(DeltaTimeWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
+        self.listen = 'delta'
+
+    def update(self, packet):
+        value = getit(self.listen, packet)
+        if value != self.value:
+            self.value = value
+            if value < 0:
+                self.font_color = GREEN
+            elif value > 0:
+                self.font_color = RED
+            else:
+                self.font_color = FOREGROUND_COLOR
+            self.add_to_dirty_rects()
+            self.draw()
+            return True
+        return False
+
+class ObsoleteDeltaTimeWidget(TextWidget):
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+        super(DeltaTimeWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
         self.listen = 'graphics.i_current_time'
         self.last_i_current_time = sys.maxint
         self.lap_distances = []
@@ -404,10 +424,10 @@ class DeltaTimeWidget(TextWidget):
                 i_compare_time = getit('graphics.i_best_time', packet)
 
             delta = i_current_time - i_compare_time
-            delta = round(delta / 1000.0, 2)
+            delta = round(delta / 1000.0, 3)
 
             if delta != self.delta:
-                self.value = delta
+                self.value = self.delta = delta
                 if self.delta < 0:
                     self.font_color = GREEN
                 elif self.delta > 0:
