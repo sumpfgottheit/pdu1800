@@ -9,7 +9,7 @@ from constants import *
 import sys
 from collections import deque
 from copy import deepcopy
-import math
+from math import floor
 
 dirty_rects = []
 widgets = {}
@@ -34,8 +34,11 @@ def millisToString(millis):
     mins, x = divmod(x, 60000)
     secs, x = divmod(x, 1000)
     x, y = divmod(x, 10)
-    #return "%d.%02d" % (secs, x) if mins == 0 else "%d:%02d.%03d" % (mins, secs, x)
-    return "%02d:%02d:%02d" % (mins, secs, x)
+    #return "%d.%02d" % (secs, x) if mins == 0 else "%d:%02d.%03d" % (mins, secs, x
+    if mins==0:
+        return "   %02d:%02d" % (secs, x)
+    else:
+        return "%02d:%02d:%02d" % (mins, secs, x)
 
 
 def clear_dirty_rects():
@@ -209,6 +212,76 @@ class SpeedWidget(TextWidget):
             return True
         return False
 
+class FuelWidget(TextWidget):
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+        super(FuelWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
+        self.listen = 'physics.fuel'
+        self.laps_completed     = -3
+        self.fuel_per_lap       = []    # Array mit verbrauchten Fuel per Lap
+        self.fuel_start_of_lap  = -1    # The fuel at the start of the lap
+        self.avg_fuel_per_lap   = -1    # The average fuel needed per lap
+        self.fuel_laps_left     = -1
+        self.laps_left          = -1
+
+    def newlap(self, packet):
+        fuel = getit(self.listen, packet)
+        self.fuel_used_this_lap = self.fuel_start_of_lap - fuel
+        if self.fuel_used_this_lap > 0.0:
+            self.fuel_per_lap.append(self.fuel_used_this_lap)
+        else:
+            return
+        if len(self.fuel_per_lap) > 10:
+            self.avg_fuel_per_lap = sum(self.fuel_per_lap[-10:]) / float(len(self.fuel_per_lap[-10:]))
+        else:
+            self.avg_fuel_per_lap = sum(self.fuel_per_lap) / float(len(self.fuel_per_lap))
+        self.fuel_start_of_lap = fuel
+        num_laps = getit('graphics.number_of_laps', packet)
+        if num_laps >= 0:
+            self.laps_left = num_laps - self.laps_completed
+            try:
+                self.fuel_laps_left = fuel - (self.laps_left / self.avg_fuel_per_lap)
+            except ZeroDivisionError:
+                self.fuel_laps_left = -1
+        print self.info
+
+    @property
+    def info(self):
+        s_fuel_laps_left = "%.02f" % self.fuel_laps_left if isinstance(self.fuel_laps_left, float) else self.fuel_laps_left
+        return "\n".join([
+            "Laps Completed: %d" % self.laps_completed,
+            "Fuel Start oL : %.02f" % self.fuel_start_of_lap,
+            "Fuel used thsL: %.02f" % self.fuel_used_this_lap,
+            "Fuel per Lap  : %s" % str(self.fuel_per_lap),
+            "Avg Fuel p. L.: %.02f" % self.avg_fuel_per_lap,
+            "Laps Left     : %d" % self.laps_left,
+            "Fuel Laps Left: %s" % s_fuel_laps_left,
+            ""
+        ])
+
+    def update(self, packet):
+        value = getit(self.listen, packet)
+        if self.fuel_start_of_lap == -1:
+            self.fuel_start_of_lap = value
+        laps_completed = getit('graphics.completed_laps', packet) + 1
+        if laps_completed != self.laps_completed:
+            self.laps_completed = laps_completed
+            self.newlap(packet)
+
+            if self.fuel_laps_left == -1:
+                self.value = 'WAIT'
+            else:
+                if self.fuel_laps_left > 5:   # 5
+                    self.font_color = FOREGROUND_COLOR
+                elif 5 >= self.fuel_laps_left >= 2:
+                    self.font_color = YELLOW
+                else:
+                    self.font_color = RED
+                self.value = "%02dL" % int(floor(self.fuel_laps_left))
+            self.add_to_dirty_rects()
+            self.draw()
+            return True
+        return False
+
 class PosWidget(TextWidget):
     def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
         super(PosWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
@@ -220,7 +293,7 @@ class PosWidget(TextWidget):
         num_cars = getit('static.num_cars', packet)
         pos = getit('graphics.position', packet)
         if num_cars != self._num_cars or pos != self._pos:
-            self.value = "%d/%d" % (pos, num_cars)
+            self.value = "   %02d/%02d" % (pos, num_cars)
             self._num_cars = num_cars
             self._pos = pos
             self.add_to_dirty_rects()
@@ -238,7 +311,7 @@ class LapsWidget(TextWidget):
         num_laps = getit('graphics.number_of_laps', packet)
         laps_completed = getit('graphics.completed_laps', packet)
         if laps_completed != self.laps_completed:
-            self.value = "%d/%d" % (laps_completed+1, num_laps)
+            self.value = "   %02d/%02d" % (laps_completed+1, num_laps)
             self.laps_completed = laps_completed
             self.add_to_dirty_rects()
             self.draw()
@@ -343,7 +416,7 @@ class RPMBarWidget(Widget):
 
 class TimeWidget(TextWidget):
     def update(self, packet):
-        value = getit(self.listen, packet)[:-2]
+        value = getit(self.listen, packet)[:-1]
         if value != self.value:
             self.value = value
             self.add_to_dirty_rects()
@@ -354,8 +427,18 @@ class TimeWidget(TextWidget):
 class CurrentTimeWidget(TimeWidget):
     def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
         super(CurrentTimeWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
-        self.listen = 'graphics.current_time'
-        self.value = None
+        self.listen = 'graphics.i_current_time'
+        self.i_value = None
+
+    def update(self, packet):
+        i_value = getit(self.listen, packet)
+        if i_value != self.i_value:
+            self.i_value = i_value
+            self.value = millisToString(i_value)
+            self.add_to_dirty_rects()
+            self.draw()
+            return True
+        return False
 
 class BestTimeWidget(TimeWidget):
     def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
@@ -391,7 +474,6 @@ class LastTimeWidget(TimeWidget):
         self.value = millisToString(i_value)
         i_best_time = getit('graphics.i_best_time', packet)
         i_last_time = getit('graphics.i_last_time', packet)
-        print "%s - %s" % (i_last_time, i_best_time)
         if i_last_time == i_best_time:
             self.font_color = GREEN
         elif (i_best_time - i_last_time) > 1000:
@@ -403,7 +485,6 @@ class LastTimeWidget(TimeWidget):
         return True
 
 
-
 class DeltaTimeWidget(TextWidget):
     def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
         super(DeltaTimeWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
@@ -413,7 +494,7 @@ class DeltaTimeWidget(TextWidget):
     def update(self, packet):
         i_value = float(getit(self.listen, packet))
         if i_value != self.i_value:
-            self.value = "%+.3f" % i_value
+            self.value = millisToString(abs(i_value)*1000)
             if i_value < 0:
                 self.font_color = GREEN
             elif i_value > 0:
@@ -577,27 +658,28 @@ def create_page_0(surface):
     # Current Time Widget
     label_current_time = LabelWidget(surface, x=pos.x, y=pos.yy+LABEL_HEIGHT+5, w=TIME_LABEL_WIDTH, h=30, fontsize=12, value="Cur", borders='tlb')
     page.add(label_current_time)
-    current_time = CurrentTimeWidget(surface, x=label_current_time.xx, y=pos.yy+LABEL_HEIGHT+5, w=TIME_WIDGET_WIDTH, h=30, fontsize=20, align=ALIGN_CENTER, borders='tbr')
+    current_time = CurrentTimeWidget(surface, x=label_current_time.xx, y=label_current_time.y, w=TIME_WIDGET_WIDTH, h=30, fontsize=20, align=ALIGN_RIGHT, borders='tbr')
     page.add(current_time)
 
     # Delta Time Widget
     label_delta_time = LabelWidget(surface, x=current_time.xx+5, y=label_current_time.y, w=TIME_LABEL_WIDTH, h=30, fontsize=12, value=u"d/t", borders='tlb')
     page.add(label_delta_time)
-    delta_time = DeltaTimeWidget(surface, x=label_delta_time.xx, y=label_delta_time.y, w=TIME_WIDGET_WIDTH, h=30, fontsize=20, align=ALIGN_CENTER, borders='tbr')
+    delta_time = DeltaTimeWidget(surface, x=label_delta_time.xx, y=label_delta_time.y, w=TIME_WIDGET_WIDTH, h=30, fontsize=20, align=ALIGN_RIGHT, borders='tbr')
     page.add(delta_time)
 
     # Last Time Widget
     label_last_time = LabelWidget(surface, x=label_current_time.x, y=label_current_time.yy+5, w=TIME_LABEL_WIDTH, h=30, fontsize=12, value=u"Lst", borders='tlb')
     page.add(label_last_time)
-    last_time = LastTimeWidget(surface, x=label_last_time.xx, y=label_last_time.y, w=TIME_WIDGET_WIDTH, h=30, fontsize=20, align=ALIGN_CENTER, borders='tbr')
+    last_time = LastTimeWidget(surface, x=label_last_time.xx, y=label_last_time.y, w=TIME_WIDGET_WIDTH, h=30, fontsize=20, align=ALIGN_RIGHT, borders='tbr')
     page.add(last_time)
 
     # best Time Widget
     label_best_time = LabelWidget(surface, x=label_delta_time.x, y=label_current_time.yy+5, w=TIME_LABEL_WIDTH, h=30, fontsize=12, value=u"Bst", borders='tlb')
     page.add(label_best_time)
-    best_time = BestTimeWidget(surface, x=label_best_time.xx, y=label_best_time.y, w=TIME_WIDGET_WIDTH, h=30, fontsize=20, align=ALIGN_CENTER, borders='tbr')
+    best_time = BestTimeWidget(surface, x=label_best_time.xx, y=label_best_time.y, w=TIME_WIDGET_WIDTH, h=30, fontsize=20, align=ALIGN_RIGHT, borders='tbr')
     page.add(best_time)
 
+    
     return page
 
 def create_page_1(surface):
@@ -615,17 +697,11 @@ def create_page_1(surface):
     l_speed = LabelWidget(surface, x=w_speed.x, y=w_speed.yy, w=w_speed.w, h=LABEL_HEIGHT, value="km/h", fontsize=16, borders=BORDER_BLR)
     page.add(l_speed)
 
-    # Position Widget
-    w_pos = PosWidget(surface, x=w_speed.x, y=l_speed.yy+4, w=w_speed.w, h=DEFAULT_HEIGHT, fontsize=35, borders=BORDER_TLR)
-    page.add(w_pos)
-    l_pos = LabelWidget(surface, x=w_pos.x, y=w_pos.yy, w=w_pos.w, h=LABEL_HEIGHT, value="Pos", fontsize=16, borders=BORDER_BLR)
-    page.add(l_pos)
-
-    # Laps Widget
-    w_laps = LapsWidget(surface, x=w_speed.x, y=l_pos.yy+4, w=w_speed.w, h=DEFAULT_HEIGHT, fontsize=35, borders=BORDER_TLR)
-    page.add(w_laps)
-    l_laps = LabelWidget(surface, x=w_laps.x, y=w_laps.yy, w=w_laps.w, h=LABEL_HEIGHT, value="Laps", fontsize=16, borders=BORDER_BLR)
-    page.add(l_laps)
+    # Fuel
+    w_fuel = FuelWidget(surface, x=l_speed.x, y=l_speed.yy+4, w=l_speed.w, h=DEFAULT_HEIGHT, fontsize=25, borders=BORDER_TLR)
+    page.add(w_fuel)
+    l_fuel = LabelWidget(surface, x=w_fuel.x, y=w_fuel.yy, w=w_fuel.w, h=LABEL_HEIGHT, value="Fuel", fontsize=16, borders=BORDER_BLR)
+    page.add(l_fuel)
 
     # Gear Number
     w_gear  = GearNumberWidget(surface, x=w_speed.xx+4, y=w_speed.y, w=80, h=122, fontsize=135, borders=BORDER_TLR)
@@ -656,6 +732,19 @@ def create_page_1(surface):
     page.add(l_best_time)
     w_best_time = BestTimeWidget(surface, x=l_best_time.xx, y=l_best_time.y, w=TIME_WIDGET_WIDTH, h=l_best_time.h, fontsize=20, align=ALIGN_CENTER, borders='tbr')
     page.add(w_best_time)
+
+    # Pos Widget
+    l_pos = LabelWidget(surface, x=l_best_time.x, y=l_best_time.yy+4, w=TIME_LABEL_WIDTH, h=30, fontsize=16, value=u"Pos", borders='tlb')
+    page.add(l_pos)
+    pos = PosWidget(surface, x=l_pos.xx, y=l_pos.y, w=TIME_WIDGET_WIDTH, h=30, fontsize=20, align=ALIGN_CENTER, borders='tbr')
+    page.add(pos)
+
+    # Laps Widget
+    l_laps = LabelWidget(surface, x=l_pos.x, y=l_pos.yy+4, w=TIME_LABEL_WIDTH, h=30, fontsize=16, value=u"Lap", borders='tlb')
+    page.add(l_laps)
+    laps = LapsWidget(surface, x=l_laps.xx, y=l_laps.y, w=TIME_WIDGET_WIDTH, h=30, fontsize=20, align=ALIGN_CENTER, borders='tbr')
+    page.add(laps)
+
 
     return page
 
