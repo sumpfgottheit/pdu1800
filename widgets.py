@@ -236,14 +236,8 @@ class FuelWidget(TextWidget):
         else:
             self.avg_fuel_per_lap = sum(self.fuel_per_lap) / float(len(self.fuel_per_lap))
         self.fuel_start_of_lap = fuel
-        num_laps = getit('graphics.number_of_laps', packet)
-        if num_laps >= 0:
-            self.laps_left = num_laps - self.laps_completed
-            try:
-                self.fuel_laps_left = fuel - (self.laps_left / self.avg_fuel_per_lap)
-            except ZeroDivisionError:
-                self.fuel_laps_left = -1
-        print self.info
+        self.fuel_laps_left = floor(fuel / self.avg_fuel_per_lap)
+        #print self.info
 
     @property
     def info(self):
@@ -263,7 +257,7 @@ class FuelWidget(TextWidget):
         value = getit(self.listen, packet)
         if self.fuel_start_of_lap == -1:
             self.fuel_start_of_lap = value
-        laps_completed = getit('graphics.completed_laps', packet) + 1
+        laps_completed = getit('graphics.completed_laps', packet)
         if laps_completed != self.laps_completed:
             self.laps_completed = laps_completed
             self.newlap(packet)
@@ -277,7 +271,7 @@ class FuelWidget(TextWidget):
                     self.font_color = YELLOW
                 else:
                     self.font_color = RED
-                self.value = "%02dL" % int(floor(self.fuel_laps_left))
+                self.value = "%02d" % int(floor(self.fuel_laps_left))
             self.add_to_dirty_rects()
             self.draw()
             return True
@@ -521,11 +515,11 @@ class FlagWidget(TextWidget):
         self.is_enabled = getit(self.value_enabled, packet)
 
         if not self.is_enabled:
-            if self.font_color == GREY:
+            if self.font_color == DARK_GREY:
                 return False
             else:
-                self.font_color = GREY
-                self.border_color = GREY
+                self.font_color = DARK_GREY
+                self.border_color = DARK_GREY
         else:
             self.is_active = getit(self.value_active, packet)
             if self.is_active:
@@ -564,75 +558,75 @@ class ABSFlagWidget(FlagWidget):
         self.value_enabled = 'rt_car_info.is_abs_enabled'
         self.value_active = 'rt_car_info.is_abs_in_action'
 
-class ObsoleteDeltaTimeWidget(TextWidget):
-    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
-        super(DeltaTimeWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
-        self.listen = 'graphics.i_current_time'
-        self.last_i_current_time = sys.maxint
-        self.lap_distances = []
-        self.require_initialization = True
-        self.value = 0
-        self.log_current_lap = {}
-        self.log_best_lap = {}
-        self.distances_best_lap = None
-        self.last_distance_compared = -1
-        self.delta = None
-
-    def new_lap(self, packet):
-        distance_traveled = getit('graphics.distance_traveled', packet)
-        distance_traveled_this_lap = distance_traveled - sum(self.lap_distances)
-        self.lap_distances.append(distance_traveled_this_lap)
-        self.last_distance_compared = -1
-
-        i_last_lap = getit('graphics.i_last_time', packet)
-        i_best_lap = getit('graphics.i_best_time', packet)
-        if len(self.log_best_lap) == 0 or i_best_lap == i_last_lap:
-            self.log_best_lap = deepcopy(self.log_current_lap)
-            self.distances_best_lap = deque(sorted(self.log_best_lap.keys()))
-
-        self.log_current_lap = {}
-
-    def update(self, packet):
-        if self.require_initialization:
-            self.lap_distances.append(getit('graphics.distance_traveled', packet))
-            self.require_initialization = False
-            self.value = "n/a"
-            self.add_to_dirty_rects()
-            self.draw()
-            return True
-
-        i_current_time = getit('graphics.i_current_time', packet)
-        if i_current_time < self.last_i_current_time:
-            self.new_lap(packet)
-        self.last_i_current_time = i_current_time                       # remember i_current_time
-
-        lap = getit('graphics.completed_laps', packet) + 1
-        distance_traveled = getit('graphics.distance_traveled', packet)
-        distance_traveled_this_lap = distance_traveled - sum(self.lap_distances)
-        self.log_current_lap[distance_traveled_this_lap] = i_current_time
-        #print "%s - %s - %s" % (lap, self.lap_distances, distance_traveled_this_lap)
-
-        if self.distances_best_lap is not None:
-            try:
-                while self.last_distance_compared < distance_traveled_this_lap:
-                    self.last_distance_compared = self.distances_best_lap.popleft()
-                i_compare_time = self.log_best_lap[self.last_distance_compared]
-            except IndexError:
-                i_compare_time = getit('graphics.i_best_time', packet)
-
-            delta = i_current_time - i_compare_time
-            delta = round(delta / 1000.0, 3)
-
-            if delta != self.delta:
-                self.value = self.delta = delta
-                if self.delta < 0:
-                    self.font_color = GREEN
-                elif self.delta > 0:
-                    self.font_color = RED
-                self.add_to_dirty_rects()
-                self.draw()
-                return True
-        return False
+# class ObsoleteDeltaTimeWidget(TextWidget):
+#     def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+#         super(DeltaTimeWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
+#         self.listen = 'graphics.i_current_time'
+#         self.last_i_current_time = sys.maxint
+#         self.lap_distances = []
+#         self.require_initialization = True
+#         self.value = 0
+#         self.log_current_lap = {}
+#         self.log_best_lap = {}
+#         self.distances_best_lap = None
+#         self.last_distance_compared = -1
+#         self.delta = None
+#
+#     def new_lap(self, packet):
+#         distance_traveled = getit('graphics.distance_traveled', packet)
+#         distance_traveled_this_lap = distance_traveled - sum(self.lap_distances)
+#         self.lap_distances.append(distance_traveled_this_lap)
+#         self.last_distance_compared = -1
+#
+#         i_last_lap = getit('graphics.i_last_time', packet)
+#         i_best_lap = getit('graphics.i_best_time', packet)
+#         if len(self.log_best_lap) == 0 or i_best_lap == i_last_lap:
+#             self.log_best_lap = deepcopy(self.log_current_lap)
+#             self.distances_best_lap = deque(sorted(self.log_best_lap.keys()))
+#
+#         self.log_current_lap = {}
+#
+#     def update(self, packet):
+#         if self.require_initialization:
+#             self.lap_distances.append(getit('graphics.distance_traveled', packet))
+#             self.require_initialization = False
+#             self.value = "n/a"
+#             self.add_to_dirty_rects()
+#             self.draw()
+#             return True
+#
+#         i_current_time = getit('graphics.i_current_time', packet)
+#         if i_current_time < self.last_i_current_time:
+#             self.new_lap(packet)
+#         self.last_i_current_time = i_current_time                       # remember i_current_time
+#
+#         lap = getit('graphics.completed_laps', packet) + 1
+#         distance_traveled = getit('graphics.distance_traveled', packet)
+#         distance_traveled_this_lap = distance_traveled - sum(self.lap_distances)
+#         self.log_current_lap[distance_traveled_this_lap] = i_current_time
+#         #print "%s - %s - %s" % (lap, self.lap_distances, distance_traveled_this_lap)
+#
+#         if self.distances_best_lap is not None:
+#             try:
+#                 while self.last_distance_compared < distance_traveled_this_lap:
+#                     self.last_distance_compared = self.distances_best_lap.popleft()
+#                 i_compare_time = self.log_best_lap[self.last_distance_compared]
+#             except IndexError:
+#                 i_compare_time = getit('graphics.i_best_time', packet)
+#
+#             delta = i_current_time - i_compare_time
+#             delta = round(delta / 1000.0, 3)
+#
+#             if delta != self.delta:
+#                 self.value = self.delta = delta
+#                 if self.delta < 0:
+#                     self.font_color = GREEN
+#                 elif self.delta > 0:
+#                     self.font_color = RED
+#                 self.add_to_dirty_rects()
+#                 self.draw()
+#                 return True
+#         return False
 
 
 def fill_background(surface):

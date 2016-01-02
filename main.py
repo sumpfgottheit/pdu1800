@@ -15,7 +15,7 @@ import sys
 from telemetry_reader import ACTelemetryReader
 from datastream import PDU1800DataStream, PDU1800DatasStreamRepeater
 from copy import copy
-
+import platform
 
 #pygame.init()
 pygame.font.init()
@@ -48,8 +48,11 @@ show_overlay = False
 overlay = Overlay(surface)
 telemetry_reader = None
 
-#datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
-datastream = PDU1800DatasStreamRepeater()
+if platform.machine() == 'armv7l' and platform.dist()[0] == 'debian':
+    datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
+else:
+    #datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
+    datastream = PDU1800DatasStreamRepeater()
 
 while running:
     #

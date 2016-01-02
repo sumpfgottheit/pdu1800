@@ -186,10 +186,10 @@ class PDU1800DatasStreamRepeater(BaseDataStream):
 
     @property
     def has_data_available(self):
-        elapsed_since_last_visit = time.clock() - self.ts
-        t = abs(self.next_t - elapsed_since_last_visit)
-        self.ts = time.clock()
-        time.sleep(min(t, 0.2))
+        #elapsed_since_last_visit = time.clock() - self.ts
+        #t = abs(self.next_t - elapsed_since_last_visit)
+        #self.ts = time.clock()
+        #time.sleep(min(t, 0.2))
         return True
 
     @property

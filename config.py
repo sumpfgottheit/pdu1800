@@ -56,6 +56,7 @@ MAGENTA= (255,   0, 255)
 YELLOW = (255, 255,   0)
 RPM_YELLOW = (230, 230,   40)
 GREY   = (214, 214, 214)
+DARK_GREY = (160, 160, 160)
 
 BACKGROUND_COLOR = BLACK
 FOREGROUND_COLOR = WHITE
@@ -63,17 +64,12 @@ FOREGROUND_COLOR = WHITE
 #
 #
 
-import os, sys
+import os, sys, platform
 if sys.platform == 'darwin':
     # Display on Laptop Screen on the left
     os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (-400,100)
-    #from datastream import MockBaseDataStream
-    #datastream = MockBaseDataStream()
-    #from datastream import PDU1800DataStream
-    #datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
-    #from datastream import PDU1800DatasStreamRepeater
-    #datastream = PDU1800DatasStreamRepeater()
-elif sys.platform.startswith('linux'):
+
+elif platform.machine() == 'armv7l' and platform.dist()[0] == 'debian':
     if os.path.isfile('/etc/pointercal'):
         os.environ["TSLIB_CALIBFILE"] = '/etc/pointercal'
     os.putenv('SDL_VIDEODRIVER', 'fbcon')
@@ -87,8 +83,7 @@ elif sys.platform.startswith('linux'):
     for dev in devices:
         if dev.name == "ADS7846 Touchscreen":
             eventX = dev.fn
-
     os.environ["SDL_MOUSEDEV"] = eventX
-    #from datastream import PDU1800DataStream
-    #datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
-#
+else:
+    # Display on Laptop Screen on the left
+    os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (80,80)
