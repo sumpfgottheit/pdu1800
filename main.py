@@ -12,7 +12,9 @@ from pygame.locals import *
 from widgets import *
 from config import *
 import sys
-from datastream import SimDataPacket
+from telemetry_reader import ACTelemetryReader
+from datastream import PDU1800DataStream, PDU1800DatasStreamRepeater
+from copy import copy
 
 
 #pygame.init()
@@ -44,6 +46,11 @@ pygame.display.flip()
 running = True
 show_overlay = False
 overlay = Overlay(surface)
+telemetry_reader = None
+
+#datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
+datastream = PDU1800DatasStreamRepeater()
+
 while running:
     #
     # Read from Network
@@ -80,4 +87,5 @@ while running:
     screen.blit(surface, (0, 0))
     pygame.display.update(dirty_rects)
 
+datastream.quit()
 pygame.quit()

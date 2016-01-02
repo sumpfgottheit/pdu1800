@@ -12,6 +12,8 @@ import pickle
 import random
 from datetime import datetime
 import json
+from telemetry_reader import ACTelemetryReader
+from pprint import pformat
 
 SimDataPacket = namedtuple('SimDataPacketBase', ['version', GEAR, RPM, SPEED, MAX_RPM, NUM_CARS, POS, NUM_LAPS, LAPS_COMPLETED,
                                                  CURRENT_TIME, LAST_TIME, BEST_TIME])
@@ -137,10 +139,12 @@ class PDU1800DataStream(BaseDataStream):
     def __init__(self, ip, port):
         super(PDU1800DataStream, self).__init__()
         self.port = port
-        local_ip = ip
+        self.local_ip = ip
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setblocking(0)
-        self.sock.bind((local_ip, self.port))
+        self.sock.bind((self.local_ip, self.port))
+        self.ac_server_ip = None
+        self.telemetry_reader = None
 
     @property
     def has_data_available(self):
@@ -149,9 +153,22 @@ class PDU1800DataStream(BaseDataStream):
 
     @property
     def packet(self):
-        d = self.sock.recv(BUF_SIZE)  # Recieve from udp
-        packet = pickle.loads(d)   # unpickle the data
+        if self.ac_server_ip is None:
+            _d, _address = self.sock.recvfrom(BUFFER_SIZE)  # Recieve from udp
+            self.ac_server_ip = _address[0]
+            self.telemetry_reader = ACTelemetryReader(self.local_ip, self.ac_server_ip)
+            self.telemetry_reader.start()
+        else:
+            _d = self.sock.recv(BUFFER_SIZE)  # Recieve from udp
+        packet = pickle.loads(_d)   # unpickle the data
+        if self.telemetry_reader is not None:
+            packet['rt_car_info'] = self.telemetry_reader.rt_car_info
         return packet
+
+    def quit(self):
+        if self.telemetry_reader:
+            self.telemetry_reader.running = False
+            self.telemetry_reader.join(2.0) # Wait 2 seconds
 
 class PDU1800DatasStreamRepeater(BaseDataStream):
     def __init__(self, skip_packets = 1300):
@@ -203,12 +220,13 @@ if __name__== '__main__':
                     else:
                         continue
                 l.append((delta_t, d))
+                print pformat(d['rt_car_info'])
                 t = now
     except KeyboardInterrupt:
         if len(l) > 0:
             with open('pdu1800_datastream.json', 'w') as f:
                 f.write(json.dumps(l, indent=2))
-
+    datastream.quit()
 
 
 

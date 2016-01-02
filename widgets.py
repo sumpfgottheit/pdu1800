@@ -506,6 +506,13 @@ class DeltaTimeWidget(TextWidget):
             return True
         return False
 
+class TCWidget(TextWidget):
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+        super(TCWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
+        self.listen = 'physics.tc'
+        self.font_color = FOREGROUND_COLOR
+
+
 class ObsoleteDeltaTimeWidget(TextWidget):
     def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
         super(DeltaTimeWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
@@ -617,71 +624,6 @@ class Page(object):
         for widget in self.widgets:
             widget.draw()
 
-def create_page_0(surface):
-    page = Page('Base', surface)
-    LABEL_HEIGHT=20
-    DEFAULT_HEIGHT=50
-
-    # RPM BAR Widget
-    bar = RPMBarWidget(surface, 0, 0, SCREEN_WIDTH ,20)
-    page.add(bar)
-
-    # Gear Number
-    gear  = GearNumberWidget(surface, x=SCREEN_WIDTH/2-40, y=25, w=80, h=125, fontsize=130, borders=BORDER_TLR)
-    page.add(gear)
-    lg = LabelWidget(surface, x=gear.x, y=gear.yy, w=gear.w, h=LABEL_HEIGHT, value="Gear", fontsize=16, borders=BORDER_BLR)
-    page.add(lg)
-
-    # Speed Widget
-    speed = SpeedWidget(surface, x=0, y=gear.y, w=gear.x-5, h=DEFAULT_HEIGHT, fontsize=35, borders=BORDER_TLR)
-    page.add(speed)
-    ls = LabelWidget(surface, x=speed.x, y=speed.yy, w=speed.w, h=LABEL_HEIGHT, value="km/h", fontsize=16, borders=BORDER_BLR)
-    page.add(ls)
-
-    rpms = RPMWidget(surface, x=gear.xx+5, y=gear.y, w=SCREEN_WIDTH-gear.xx-5, h=speed.h, fontsize=35, borders=BORDER_TLR)
-    page.add(rpms)
-    ls = LabelWidget(surface, x=rpms.x, y=rpms.yy, w=rpms.w, h=LABEL_HEIGHT, value="rpms", fontsize=16, borders=BORDER_BLR)
-    page.add(ls)
-
-    # Pos Widget
-    pos = PosWidget(surface, x=0, y=speed.yy+LABEL_HEIGHT+5, w=gear.x-5, h=DEFAULT_HEIGHT, fontsize=35, borders=BORDER_TLR)
-    page.add(pos)
-    ls = LabelWidget(surface, x=pos.x, y=pos.yy, w=pos.w, h=LABEL_HEIGHT, value="Pos", fontsize=16, borders=BORDER_BLR)
-    page.add(ls)
-
-    # Laps Widget
-    laps = LapsWidget(surface, x=rpms.x, y=pos.y, w=rpms.w, h=DEFAULT_HEIGHT, fontsize=35, borders=BORDER_TLR)
-    page.add(laps)
-    ls = LabelWidget(surface, x=laps.x, y=laps.yy, w=laps.w, h=LABEL_HEIGHT, value="Laps", fontsize=16, borders=BORDER_BLR)
-    page.add(ls)
-
-    # Current Time Widget
-    label_current_time = LabelWidget(surface, x=pos.x, y=pos.yy+LABEL_HEIGHT+5, w=TIME_LABEL_WIDTH, h=30, fontsize=12, value="Cur", borders='tlb')
-    page.add(label_current_time)
-    current_time = CurrentTimeWidget(surface, x=label_current_time.xx, y=label_current_time.y, w=TIME_WIDGET_WIDTH, h=30, fontsize=20, align=ALIGN_RIGHT, borders='tbr')
-    page.add(current_time)
-
-    # Delta Time Widget
-    label_delta_time = LabelWidget(surface, x=current_time.xx+5, y=label_current_time.y, w=TIME_LABEL_WIDTH, h=30, fontsize=12, value=u"d/t", borders='tlb')
-    page.add(label_delta_time)
-    delta_time = DeltaTimeWidget(surface, x=label_delta_time.xx, y=label_delta_time.y, w=TIME_WIDGET_WIDTH, h=30, fontsize=20, align=ALIGN_RIGHT, borders='tbr')
-    page.add(delta_time)
-
-    # Last Time Widget
-    label_last_time = LabelWidget(surface, x=label_current_time.x, y=label_current_time.yy+5, w=TIME_LABEL_WIDTH, h=30, fontsize=12, value=u"Lst", borders='tlb')
-    page.add(label_last_time)
-    last_time = LastTimeWidget(surface, x=label_last_time.xx, y=label_last_time.y, w=TIME_WIDGET_WIDTH, h=30, fontsize=20, align=ALIGN_RIGHT, borders='tbr')
-    page.add(last_time)
-
-    # best Time Widget
-    label_best_time = LabelWidget(surface, x=label_delta_time.x, y=label_current_time.yy+5, w=TIME_LABEL_WIDTH, h=30, fontsize=12, value=u"Bst", borders='tlb')
-    page.add(label_best_time)
-    best_time = BestTimeWidget(surface, x=label_best_time.xx, y=label_best_time.y, w=TIME_WIDGET_WIDTH, h=30, fontsize=20, align=ALIGN_RIGHT, borders='tbr')
-    page.add(best_time)
-
-    
-    return page
-
 def create_page_1(surface):
     page = Page('Base1', surface)
     LABEL_HEIGHT=20
@@ -702,6 +644,10 @@ def create_page_1(surface):
     page.add(w_fuel)
     l_fuel = LabelWidget(surface, x=w_fuel.x, y=w_fuel.yy, w=w_fuel.w, h=LABEL_HEIGHT, value="Fuel", fontsize=16, borders=BORDER_BLR)
     page.add(l_fuel)
+
+    # TC
+    tc = TCWidget(surface, x=l_fuel.x, y=l_fuel.yy+4, w=int(round(l_fuel.w/2)), h=int(round(w_fuel.h/2)), fontsize=16, borders=BORDER_ALL)
+    page.add(tc)
 
     # Gear Number
     w_gear  = GearNumberWidget(surface, x=w_speed.xx+4, y=w_speed.y, w=80, h=122, fontsize=135, borders=BORDER_TLR)

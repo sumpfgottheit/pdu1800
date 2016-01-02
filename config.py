@@ -10,7 +10,7 @@ from util import get_lan_ip
 
 UDP_PORT = 18877
 IP = get_lan_ip()
-BUF_SIZE = 4096
+BUFFER_SIZE = 8192
 TIMEOUT_IN_SECONDS = 0.1
 
 #
@@ -37,6 +37,7 @@ BORDER_LEFT = 'l'
 BORDER_RIGHT = 'r'
 BORDER_TLR = [BORDER_TOP, BORDER_LEFT, BORDER_RIGHT]
 BORDER_BLR = [BORDER_BOTTOM, BORDER_LEFT, BORDER_RIGHT]
+BORDER_ALL = [BORDER_BOTTOM, BORDER_LEFT, BORDER_RIGHT, BORDER_TOP]
 
 TIME_LABEL_WIDTH=40
 TIME_WIDGET_WIDTH=105
@@ -70,8 +71,8 @@ if sys.platform == 'darwin':
     #datastream = MockBaseDataStream()
     #from datastream import PDU1800DataStream
     #datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
-    from datastream import PDU1800DatasStreamRepeater
-    datastream = PDU1800DatasStreamRepeater()
+    #from datastream import PDU1800DatasStreamRepeater
+    #datastream = PDU1800DatasStreamRepeater()
 elif sys.platform.startswith('linux'):
     if os.path.isfile('/etc/pointercal'):
         os.environ["TSLIB_CALIBFILE"] = '/etc/pointercal'
@@ -88,6 +89,6 @@ elif sys.platform.startswith('linux'):
             eventX = dev.fn
 
     os.environ["SDL_MOUSEDEV"] = eventX
-    from datastream import PDU1800DataStream
-    datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
+    #from datastream import PDU1800DataStream
+    #datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
 #
