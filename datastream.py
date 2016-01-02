@@ -171,7 +171,7 @@ class PDU1800DataStream(BaseDataStream):
             self.telemetry_reader.join(2.0) # Wait 2 seconds
 
 class PDU1800DatasStreamRepeater(BaseDataStream):
-    def __init__(self, skip_packets = 1300):
+    def __init__(self, skip_packets = 0):
         with open('pdu1800_datastream.json') as f:
             self.stream = json.load(f)
         self.t = 0
@@ -186,10 +186,10 @@ class PDU1800DatasStreamRepeater(BaseDataStream):
 
     @property
     def has_data_available(self):
-        #elapsed_since_last_visit = time.clock() - self.ts
-        #t = abs(self.next_t - elapsed_since_last_visit)
-        #self.ts = time.clock()
-        #time.sleep(min(t, 0.2))
+        elapsed_since_last_visit = time.clock() - self.ts
+        t = abs(self.next_t - elapsed_since_last_visit)
+        self.ts = time.clock()
+        time.sleep(min(t, 0.2))
         return True
 
     @property
@@ -214,18 +214,20 @@ if __name__== '__main__':
                 d = datastream.packet
                 now = timeit.default_timer()
                 delta_t = now - t
+
                 if not record:
                     if d['physics']['speed_kmh'] > 1.0:
                         record = True
                     else:
                         continue
                 l.append((delta_t, d))
-                print pformat(d['rt_car_info'])
                 t = now
     except KeyboardInterrupt:
         if len(l) > 0:
+            print "Writing File"
             with open('pdu1800_datastream.json', 'w') as f:
                 f.write(json.dumps(l, indent=2))
+    print "Quiting Datastream"
     datastream.quit()
 
 

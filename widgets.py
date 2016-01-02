@@ -57,12 +57,13 @@ class Widget(object):
         self.border_color = FOREGROUND_COLOR
         self.fill_background = fill_background
         self.borders = borders
+        self.border_thickness = 1
 
     def draw(self):
         if self.fill_background:
             pygame.draw.rect(self.surface, self.background_color, self.rect, 0) # Fill with Background color as width is 0
         if self.draw_borders:
-            pygame.draw.rect(self.surface, self.border_color, self.rect, 1)     # Draw border as, but not fill as width is 1
+            pygame.draw.rect(self.surface, self.border_color, self.rect, self.border_thickness)     # Draw border as, but not fill as width is 1
         else:
             if self.border_left:
                 pygame.draw.line(self.surface, self.border_color, (self.x, self.y), (self.x, self.yy))
@@ -506,12 +507,62 @@ class DeltaTimeWidget(TextWidget):
             return True
         return False
 
-class TCWidget(TextWidget):
-    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
-        super(TCWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
-        self.listen = 'physics.tc'
-        self.font_color = FOREGROUND_COLOR
 
+class FlagWidget(TextWidget):
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+        super(FlagWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
+        self.listen = 'flag'
+        self.font_color = FOREGROUND_COLOR
+        self.value = 'Flag'
+        self.value_enabled = 'flag_enabled'
+        self.value_active = 'flag_active'
+
+    def update(self, packet):
+        self.is_enabled = getit(self.value_enabled, packet)
+
+        if not self.is_enabled:
+            if self.font_color == GREY:
+                return False
+            else:
+                self.font_color = GREY
+                self.border_color = GREY
+        else:
+            self.is_active = getit(self.value_active, packet)
+            if self.is_active:
+                if self.font_color == YELLOW:
+                    return False
+                else:
+                    self.font_color = YELLOW
+                    self.font.set_bold(True)
+                    self.border_color = YELLOW
+            else:
+                if self.font_color == FOREGROUND_COLOR:
+                    return False
+                else:
+                    self.font_color = FOREGROUND_COLOR
+                    self.border_color = FOREGROUND_COLOR
+                    self.font.set_bold(False)
+        self.add_to_dirty_rects()
+        self.draw()
+        return True
+
+class TCFlagWidget(FlagWidget):
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+        super(TCFlagWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
+        self.listen = 'rt_car_info.is_tc_in_action'
+        self.font_color = FOREGROUND_COLOR
+        self.value = 'TC'
+        self.value_enabled = 'rt_car_info.is_tc_enabled'
+        self.value_active = 'rt_car_info.is_tc_in_action'
+
+class ABSFlagWidget(FlagWidget):
+    def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
+        super(ABSFlagWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
+        self.listen = 'rt_car_info.is_abs_in_action'
+        self.font_color = FOREGROUND_COLOR
+        self.value = 'ABS'
+        self.value_enabled = 'rt_car_info.is_abs_enabled'
+        self.value_active = 'rt_car_info.is_abs_in_action'
 
 class ObsoleteDeltaTimeWidget(TextWidget):
     def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
@@ -642,12 +693,17 @@ def create_page_1(surface):
     # Fuel
     w_fuel = FuelWidget(surface, x=l_speed.x, y=l_speed.yy+4, w=l_speed.w, h=DEFAULT_HEIGHT, fontsize=25, borders=BORDER_TLR)
     page.add(w_fuel)
-    l_fuel = LabelWidget(surface, x=w_fuel.x, y=w_fuel.yy, w=w_fuel.w, h=LABEL_HEIGHT, value="Fuel", fontsize=16, borders=BORDER_BLR)
+    l_fuel = LabelWidget(surface, x=w_fuel.x, y=w_fuel.yy, w=w_fuel.w, h=LABEL_HEIGHT, value="FuelLaps", fontsize=16, borders=BORDER_BLR)
     page.add(l_fuel)
 
     # TC
-    tc = TCWidget(surface, x=l_fuel.x, y=l_fuel.yy+4, w=int(round(l_fuel.w/2)), h=int(round(w_fuel.h/2)), fontsize=16, borders=BORDER_ALL)
+    tc = TCFlagWidget(surface, x=l_fuel.x, y=l_fuel.yy+4, w=int(round(l_fuel.w/2)-2), h=int(round(w_fuel.h/2)), fontsize=16, borders=BORDER_ALL)
     page.add(tc)
+
+    # ABS
+    abs = ABSFlagWidget(surface, x=tc.xx+4, y=tc.y, w=int(round(l_fuel.w/2)-1), h=int(round(w_fuel.h/2)), fontsize=16, borders=BORDER_ALL)
+    page.add(abs)
+
 
     # Gear Number
     w_gear  = GearNumberWidget(surface, x=w_speed.xx+4, y=w_speed.y, w=80, h=122, fontsize=135, borders=BORDER_TLR)

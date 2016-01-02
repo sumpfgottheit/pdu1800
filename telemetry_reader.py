@@ -11,6 +11,7 @@ from config import TIMEOUT_IN_SECONDS, BUFFER_SIZE, IP
 import select
 import time
 import threading
+from copy import copy
 
 LUT_FIELDNAMES_TO_UNDERSCORE={}
 
@@ -164,10 +165,21 @@ class ACTelemetryReader(threading.Thread):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind((local_ip, 0))
         self.buffer = bytearray(BUFFER_SIZE)
-        self.rt_car_info = {}
+        self._rt_car_info = {}
         self.running = False
         self.is_initialized = False
         self.is_subcribed = False
+        self._is_abs_in_action = False
+        self._is_tc_in_action = False
+
+    @property
+    def rt_car_info(self):
+        c = copy(self._rt_car_info)
+        c['is_abs_in_action'] = self._is_abs_in_action
+        c['is_tc_in_action'] = self._is_tc_in_action
+        self._is_abs_in_action = False
+        self._is_tc_in_action = False
+        return c
 
     def send_to_ac_server(self, msg):
         self.socket.sendto(msg, self.ac_server)
@@ -208,7 +220,11 @@ class ACTelemetryReader(threading.Thread):
                 nbytes = self.socket.recv_into(self.buffer, BUFFER_SIZE)
                 if nbytes == RTCARINFO_SIZE:
                     rt_car_info = RTCarInfo.from_buffer_copy(self.buffer)
-                    self.rt_car_info = struct_to_hash(rt_car_info)
+                    self._rt_car_info = struct_to_hash(rt_car_info)
+                    if self._rt_car_info['is_abs_in_action']:
+                        self._is_abs_in_action = True
+                    if self._rt_car_info['is_tc_in_action']:
+                        self._is_tc_in_action = True
                 elif nbytes == RTLAP_SIZE:
                     pass
                 else:
