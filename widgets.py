@@ -225,8 +225,12 @@ class FuelWidget(TextWidget):
         self.laps_left          = -1
 
     def newlap(self, packet):
+        #print "Yeah, newlap"
         fuel = getit(self.listen, packet)
+        #print "fuel: %s" % str(fuel)
         self.fuel_used_this_lap = self.fuel_start_of_lap - fuel
+        #print "fuel start of lap: %s" % self.fuel_start_of_lap
+        #print "self.fuel_used: %s" % self.fuel_used_this_lap
         if self.fuel_used_this_lap > 0.0:
             self.fuel_per_lap.append(self.fuel_used_this_lap)
         else:
@@ -236,12 +240,11 @@ class FuelWidget(TextWidget):
         else:
             self.avg_fuel_per_lap = sum(self.fuel_per_lap) / float(len(self.fuel_per_lap))
         self.fuel_start_of_lap = fuel
-        self.fuel_laps_left = floor(fuel / self.avg_fuel_per_lap)
+        self.fuel_laps_left = int(floor(fuel / self.avg_fuel_per_lap))
         #print self.info
 
     @property
     def info(self):
-        s_fuel_laps_left = "%.02f" % self.fuel_laps_left if isinstance(self.fuel_laps_left, float) else self.fuel_laps_left
         return "\n".join([
             "Laps Completed: %d" % self.laps_completed,
             "Fuel Start oL : %.02f" % self.fuel_start_of_lap,
@@ -249,7 +252,7 @@ class FuelWidget(TextWidget):
             "Fuel per Lap  : %s" % str(self.fuel_per_lap),
             "Avg Fuel p. L.: %.02f" % self.avg_fuel_per_lap,
             "Laps Left     : %d" % self.laps_left,
-            "Fuel Laps Left: %s" % s_fuel_laps_left,
+            "Fuel Laps Left: %s" % self.fuel_laps_left,
             ""
         ])
 
@@ -258,9 +261,12 @@ class FuelWidget(TextWidget):
         if self.fuel_start_of_lap == -1:
             self.fuel_start_of_lap = value
         laps_completed = getit('graphics.completed_laps', packet)
+        #print "laps_completed: %d, self.laps_completed: %d" % (laps_completed, self.laps_completed)
         if laps_completed != self.laps_completed:
+            #print "Updating everything"
             self.laps_completed = laps_completed
             self.newlap(packet)
+            #print "Fueld Laps left: %d" % self.fuel_laps_left
 
             if self.fuel_laps_left == -1:
                 self.value = 'WAIT'
@@ -271,7 +277,7 @@ class FuelWidget(TextWidget):
                     self.font_color = YELLOW
                 else:
                     self.font_color = RED
-                self.value = "%02d" % int(floor(self.fuel_laps_left))
+                self.value = "%02d" % self.fuel_laps_left
             self.add_to_dirty_rects()
             self.draw()
             return True

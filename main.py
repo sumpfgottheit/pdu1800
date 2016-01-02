@@ -54,41 +54,43 @@ else:
     #datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
     datastream = PDU1800DatasStreamRepeater()
 
-while running:
-    #
-    # Read from Network
-    #
-    if datastream.has_data_available:
-        d = datastream.packet
-        clear_dirty_rects()
-
-        for widget in page.dynamic_widgets:
-            widget.update(d)
-
-    if show_overlay:
-        overlay.display()
-
-    for event in pygame.event.get():
-        if event.type == QUIT:
-            running = False
-            pygame.quit()
-            sys.exit()
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            pos = pygame.mouse.get_pos()
-            pygame.mouse.get_rel()
-            if show_overlay:
-                if overlay.quit_pressed(pos):
-                    running = False
-                show_overlay = False
-                page.draw_all()
-            else:
-                show_overlay = True
-            pygame.event.clear()
-        elif event.type == KEYDOWN and event.key == K_ESCAPE:
-            running = False
-
-    screen.blit(surface, (0, 0))
-    pygame.display.update(dirty_rects)
-
+try:
+    while running:
+        #
+        # Read from Network
+        #
+        if datastream.has_data_available:
+            d = datastream.packet
+            clear_dirty_rects()
+    
+            for widget in page.dynamic_widgets:
+                widget.update(d)
+    
+        if show_overlay:
+            overlay.display()
+    
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                running = False
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                pos = pygame.mouse.get_pos()
+                pygame.mouse.get_rel()
+                if show_overlay:
+                    if overlay.quit_pressed(pos):
+                        running = False
+                    show_overlay = False
+                    page.draw_all()
+                else:
+                    show_overlay = True
+                pygame.event.clear()
+            elif event.type == KEYDOWN and event.key == K_ESCAPE:
+                running = False
+    
+        screen.blit(surface, (0, 0))
+        pygame.display.update(dirty_rects)
+except KeyboardInterrupt:
+    pass
 datastream.quit()
 pygame.quit()
