@@ -80,6 +80,9 @@ try:
                 if show_overlay:
                     if overlay.quit_pressed(pos):
                         running = False
+                    elif overlay.shutdown_pressed(pos):
+                        if platform.machine() == 'armv7l' and platform.dist()[0] == 'debian':
+                            os.system('/sbin/shutdown -h now')
                     show_overlay = False
                     page.draw_all()
                 else:

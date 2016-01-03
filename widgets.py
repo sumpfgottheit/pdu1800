@@ -766,6 +766,11 @@ class Overlay(object):
         self.label_quit.background_color = GREY
         self.label_quit.font_color = BLACK
         self.widgets.append(self.label_quit)
+        self.label_shutdown = LabelWidget(surface, x=10, y=130, w=SCREEN_WIDTH-20, h=50, value="Shutdown", fontsize=14)
+        self.label_shutdown.background_color = GREY
+        self.label_shutdown.font_color = BLACK
+        self.widgets.append(self.label_shutdown)
+
 
     def display(self):
         for widget in self.widgets:
@@ -778,3 +783,8 @@ class Overlay(object):
         else:
             return False
 
+    def shutdown_pressed(self, pos):
+        if self.label_shutdown.rect.collidepoint(pos):
+            return True
+        else:
+            return False
