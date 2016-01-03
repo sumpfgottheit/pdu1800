@@ -34,3 +34,10 @@ The [PDU1800 Data Provider](https://github.com/sumpfgottheit/pdu1800_data_provid
 
 The PDU1800 is also written in Python (2.7) and pygame. I extracts the data, hands it over to a specific widget (eg the LapTimeWidget) which takes care of displaying the data. The touchscreen shows the current IP of the Pi - necessary to configure the data provider - and can be used to quit the application of the shutdown the whole pi.
 
+## Simulation on PC or Mac
+
+The PDU1800 has been developed on a Mac and been tested on a PC - no need for a Pi. To develop, just install a python 2.7 interpreter with pygame. If you just start the `main.py`, you should be presented with a working PDU1800 on the screen, which uses a collected datastream `pdu1800_datastream.json`. If you want to collect your own datastream, just set the `raspberry_ip` in the `pdu1800_data_provider/config.ini` to the ip of your PC/Mac and start the `datastream.py` which will create a new `pdu1800_datastream.json`. 
+
+It's all python, so adapt it if necessary.
+
+
