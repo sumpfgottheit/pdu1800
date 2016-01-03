@@ -172,7 +172,7 @@ class PDU1800DataStream(BaseDataStream):
 
 class PDU1800DatasStreamRepeater(BaseDataStream):
     def __init__(self, skip_packets = 0):
-        with open('pdu1800_datastream.json') as f:
+        with open('pdu1800_datastream_laferrari.json') as f:
             self.stream = json.load(f)
         self.t = 0
         self.stream_iterator = iter(self.stream)
