@@ -1,7 +1,17 @@
-# Pi Display Unit for Assetto Corsa
+# PDU1800 - Raspberry PI Dashboard Display for Assetto Corsa
+
+![alt tag](https://raw.github.com/sumpfgottheit/pdu1800/master/doc/screen1.png)
+
+![alt tag](https://raw.github.com/sumpfgottheit/pdu1800/master/doc/screen2.jpg)
+
+I published two videos, that will show you how it works on the pi. I will publish another one once I have installed it on my wheel:
+
+https://www.youtube.com/watch?v=lXocxouxeA8
+https://www.youtube.com/watch?v=2IsrtLMVFcg
+
+
 
 The PDU1800 ist the *PI Display Unit 1800* for [Assetto Corsa](http://www.assettocorsa.net/), a tremendous Race Simulation from [Kunos](http://www.kunos-simulazioni.com/). It acts as a dashboard and displays the current gear, speed etc etc on the [Watterott RPi Touch-Display](https://github.com/watterott/RPi-Display).
 
-Current state: The Ingame Plugin pdu1800_data_provider sends the data to the Pi and and the code here displays it. As soon as I have time, I will provide more information including pictures.
 
-The Information how to install can be found in the wiki
+![alt tag](https://raw.github.com/username/projectname/branch/path/to/img.png)
