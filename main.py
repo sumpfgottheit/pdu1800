@@ -83,6 +83,14 @@ try:
                     elif overlay.shutdown_pressed(pos):
                         if platform.machine() == 'armv7l' and platform.dist()[0] == 'debian':
                             os.system('/sbin/shutdown -h now')
+                    elif overlay.restart_pressed(pos):
+                        datastream.quit()
+                        datastream = PDU1800DataStream(ip=IP, port=UDP_PORT)
+                        for widget in page.dynamic_widgets:
+                            try:
+                                widget.initialize()
+                            except AttributeError:
+                                pass
                     show_overlay = False
                     page.draw_all()
                 else:

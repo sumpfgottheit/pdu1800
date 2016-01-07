@@ -539,6 +539,8 @@ class FlagWidget(TextWidget):
 
     def update(self, packet):
         self.is_enabled = getit(self.value_enabled, packet)
+        #print "%s : %s" % (self.value_enabled, self.is_enabled)
+        #print "%s : %s" % (self.value_active, getit(self.value_active, packet))
 
         if not self.is_enabled:
             if self.font_color == DARK_GREY:
@@ -790,6 +792,10 @@ class Overlay(object):
         self.label_shutdown.background_color = GREY
         self.label_shutdown.font_color = BLACK
         self.widgets.append(self.label_shutdown)
+        self.label_restart = LabelWidget(surface, x=10, y=190, w=SCREEN_WIDTH-20, h=50, value="Restart", fontsize=14)
+        self.label_restart.background_color = GREY
+        self.label_restart.font_color = BLACK
+        self.widgets.append(self.label_restart)
 
 
     def display(self):
@@ -805,6 +811,12 @@ class Overlay(object):
 
     def shutdown_pressed(self, pos):
         if self.label_shutdown.rect.collidepoint(pos):
+            return True
+        else:
+            return False
+
+    def restart_pressed(self, pos):
+        if self.label_restart.rect.collidepoint(pos):
             return True
         else:
             return False

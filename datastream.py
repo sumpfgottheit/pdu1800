@@ -140,26 +140,26 @@ class PDU1800DataStream(BaseDataStream):
         super(PDU1800DataStream, self).__init__()
         self.port = port
         self.local_ip = ip
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.setblocking(0)
-        self.sock.bind((self.local_ip, self.port))
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.setblocking(0)
+        self.socket.bind((self.local_ip, self.port))
         self.ac_server_ip = None
         self.telemetry_reader = None
 
     @property
     def has_data_available(self):
-        ready = select.select([self.sock], [], [], TIMEOUT_IN_SECONDS)
+        ready = select.select([self.socket], [], [], TIMEOUT_IN_SECONDS)
         return ready[0]
 
     @property
     def packet(self):
         if self.ac_server_ip is None:
-            _d, _address = self.sock.recvfrom(BUFFER_SIZE)  # Recieve from udp
+            _d, _address = self.socket.recvfrom(BUFFER_SIZE)  # Recieve from udp
             self.ac_server_ip = _address[0]
             self.telemetry_reader = ACTelemetryReader(self.local_ip, self.ac_server_ip)
             self.telemetry_reader.start()
         else:
-            _d = self.sock.recv(BUFFER_SIZE)  # Recieve from udp
+            _d = self.socket.recv(BUFFER_SIZE)  # Recieve from udp
         packet = pickle.loads(_d)   # unpickle the data
         if self.telemetry_reader is not None:
             packet['rt_car_info'] = self.telemetry_reader.rt_car_info
@@ -169,6 +169,8 @@ class PDU1800DataStream(BaseDataStream):
         if self.telemetry_reader:
             self.telemetry_reader.running = False
             self.telemetry_reader.join(2.0) # Wait 2 seconds
+        self.socket.close()
+        self.socket = None
 
 class PDU1800DatasStreamRepeater(BaseDataStream):
     def __init__(self, skip_packets = 0):
