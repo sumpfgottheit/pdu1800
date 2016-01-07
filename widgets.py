@@ -217,16 +217,36 @@ class FuelWidget(TextWidget):
     def __init__(self, surface, x, y, w, h, fontsize=None, align=ALIGN_CENTER, valign=VALIGN_CENTER, borders=True):
         super(FuelWidget, self).__init__(surface, x, y, w, h, fontsize, align, valign, borders=borders)
         self.listen = 'physics.fuel'
+        self.initialize()
+
+    def initialize(self):
         self.laps_completed     = -3
         self.fuel_per_lap       = []    # Array mit verbrauchten Fuel per Lap
         self.fuel_start_of_lap  = -1    # The fuel at the start of the lap
         self.avg_fuel_per_lap   = -1    # The average fuel needed per lap
         self.fuel_laps_left     = -1
         self.laps_left          = -1
-
+        self.last_track         = ""
+        self.last_session       = -1
+        self.last_car_model     = ""
+        self.font_color = FOREGROUND_COLOR
+        self.value = 'WAIT'
+        
     def newlap(self, packet):
         #print "Yeah, newlap"
         fuel = getit(self.listen, packet)
+        if fuel > self.fuel_start_of_lap:
+            #print "Fuel > fuel_start_of_lap -> Init"
+            self.initialize()
+        car_model = getit('static.car_model', packet)
+        track = getit('static.track', packet)
+        session = getit('graphics.session', packet)
+        if car_model != self.last_car_model or track != self.last_track or session != self.last_session:
+            #print "Initalizing due to session/car/track change"
+            self.initialize()
+            self.last_track = track
+            self.last_car_model = car_model
+            self.last_session = session
         #print "fuel: %s" % str(fuel)
         self.fuel_used_this_lap = self.fuel_start_of_lap - fuel
         #print "fuel start of lap: %s" % self.fuel_start_of_lap
@@ -234,6 +254,8 @@ class FuelWidget(TextWidget):
         if self.fuel_used_this_lap > 0.0:
             self.fuel_per_lap.append(self.fuel_used_this_lap)
         else:
+            #print "No fuel used - ignore everything"
+            self.fuel_used_this_lap = 0.0
             return
         if len(self.fuel_per_lap) > 10:
             self.avg_fuel_per_lap = sum(self.fuel_per_lap[-10:]) / float(len(self.fuel_per_lap[-10:]))
@@ -261,12 +283,9 @@ class FuelWidget(TextWidget):
         if self.fuel_start_of_lap == -1:
             self.fuel_start_of_lap = value
         laps_completed = getit('graphics.completed_laps', packet)
-        #print "laps_completed: %d, self.laps_completed: %d" % (laps_completed, self.laps_completed)
         if laps_completed != self.laps_completed:
-            #print "Updating everything"
             self.laps_completed = laps_completed
             self.newlap(packet)
-            #print "Fueld Laps left: %d" % self.fuel_laps_left
 
             if self.fuel_laps_left == -1:
                 self.value = 'WAIT'
@@ -475,9 +494,10 @@ class LastTimeWidget(TimeWidget):
         self.value = millisToString(i_value)
         i_best_time = getit('graphics.i_best_time', packet)
         i_last_time = getit('graphics.i_last_time', packet)
+        print "%d - %d : %d" % (i_best_time, i_last_time, i_best_time - i_last_time)
         if i_last_time == i_best_time:
             self.font_color = GREEN
-        elif (i_best_time - i_last_time) > 1000:
+        elif abs(i_best_time - i_last_time) < 1000:
             self.font_color = FOREGROUND_COLOR
         else:
             self.font_color = YELLOW
