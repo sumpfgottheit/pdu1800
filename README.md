@@ -9,9 +9,9 @@ The PDU1800 ist the *PI Display Unit 1800* for [Assetto Corsa](http://www.assett
 ![alt tag](https://raw.github.com/sumpfgottheit/pdu1800/master/doc/screen2.jpg)
 
 I published two videos, that will show you how it works on the pi. I will publish another one once I have installed it on my wheel:
-
-* https://www.youtube.com/watch?v=lXocxouxeA8
-* https://www.youtube.com/watch?v=2IsrtLMVFcg
+* Youtube: [Ingame (LaFerrari at Spielberg South)](https://youtu.be/xYxKDCZYCDI)
+* Youtube: [Simulation 1](https://www.youtube.com/watch?v=lXocxouxeA8)
+* Youtube: [Simulation 2](https://www.youtube.com/watch?v=2IsrtLMVFcg)
 
 ## Description what you see
 
