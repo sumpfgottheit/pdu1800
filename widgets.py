@@ -494,7 +494,7 @@ class LastTimeWidget(TimeWidget):
         self.value = millisToString(i_value)
         i_best_time = getit('graphics.i_best_time', packet)
         i_last_time = getit('graphics.i_last_time', packet)
-        print "%d - %d : %d" % (i_best_time, i_last_time, i_best_time - i_last_time)
+        #print "%d - %d : %d" % (i_best_time, i_last_time, i_best_time - i_last_time)
         if i_last_time == i_best_time:
             self.font_color = GREEN
         elif abs(i_best_time - i_last_time) < 1000:
