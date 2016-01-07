@@ -34,6 +34,10 @@ The PDU1800 consists of two components:
 
 See the [Wiki](https://github.com/sumpfgottheit/pdu1800/wiki) for installation instructions for the PDU1800 on the Raspberry and the Readme of the [PDU1800 Data Provider](https://github.com/sumpfgottheit/pdu1800_data_provider).
 
+## Usage Hints
+
+If you exit a driving session and let the dashboard run, the UDP Telemetry Reader needs to be reinitialized. Just touch the display a click on "Restart". This will reinitialize the Telemetry Reader and the fuel calculation.
+
 ## Technical Overview
 
 The [PDU1800 Data Provider](https://github.com/sumpfgottheit/pdu1800_data_provider) is a Assetto Corsa Python Plugin. It collects the necessary data using [Rombiks siminfo.py](http://www.assettocorsa.net/forum/index.php?threads/shared-memory-for-python-applications-sim_info-py-for-ac-v0-22.11382/) and the PythonAPI for the Delta Time. All data is collected, converted into a hash, pickled and sent to the Pi with UDP. The data provider can show a debug window with the current collected data. 
