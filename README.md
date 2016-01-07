@@ -23,7 +23,7 @@ Note, that it is necessary to use shared memory, the API and the UDP Server, to 
 
 If you look into the Assetto Corsa Forums, you will find awesome dashboards, as ingame app, for smartphones, browsers or to build your cockpit using Arduino hardware. Honestly, there is no need for another dashboard. I am more interested in the act of creating something new. I've never done a Game Plugin and, although I use Python at work daily, I've never done anything graphical with pygame or interfaced with C-programs directly. So the technical challenge was also interesting for me.
 
-I actually spend far more hours in Assetto Corsa programming my PDU1800 than driving - but this will probably change as I release the PDU1800 now....
+I actually spend far more hours in Assetto Corsa programming my PDU1800 than driving, which may be the reason I always see this funny blue flags while racing....
 
 ## Installation
 
